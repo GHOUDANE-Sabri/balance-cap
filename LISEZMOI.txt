@@ -1,0 +1,23 @@
+BALANCE & CAP - application de suivi du poids
+==============================================
+
+Adresse : https://ghoudane-sabri.github.io/balance-cap/
+
+INSTALLER SUR LE TÉLÉPHONE
+   - iPhone : ouvre l'adresse dans SAFARI (pas Chrome ni Instagram),
+     touche le bouton Partager (carré avec une flèche vers le haut),
+     fais défiler et choisis "Sur l'écran d'accueil", puis "Ajouter".
+     Utilise ensuite toujours l'icône de l'écran d'accueil : ses données
+     sont séparées de celles de Safari.
+   - Android (Chrome) : ouvre l'adresse, menu ⋮ > "Installer l'application"
+     ou "Ajouter à l'écran d'accueil".
+
+   L'icône Balance & Cap apparaît comme une vraie application,
+   s'ouvre en plein écran et fonctionne sans connexion.
+
+À SAVOIR
+   - Les données (personnes, pesées) restent sur le téléphone.
+     Elles ne sont pas partagées avec la version en ligne sur claude.ai
+     ni avec un autre téléphone.
+   - Si tu effaces les données du navigateur ou désinstalles l'application,
+     les données sont perdues.

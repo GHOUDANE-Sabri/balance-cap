@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d6b62">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Balance & Cap">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Balance & Cap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+/* Layout : colonne de profil à gauche, tableau de bord à droite ; tout s'empile sur mobile. */
+:root {
+  --bg: #eef3f1;
+  --surface: #ffffff;
+  --ink: #15211e;
+  --muted: #5b6b66;
+  --line: #d5dfdb;
+  --accent: #0d6b62;
+  --accent-soft: #d6ebe7;
+  --good: #2f7d3a;
+  --warn: #b26a00;
+  --bad: #b3362b;
+  --f-display: "Familjen Grotesk", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --f-data: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1715; --surface: #17221f; --ink: #e4ece9; --muted: #95a8a2; --line: #2a3a36;
+    --accent: #4fc2b4; --accent-soft: #183a35; --good: #6cc77a; --warn: #e6a640; --bad: #ef7a6e;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 48px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 24px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
+h1 { font-family: var(--f-display); font-size: 2rem; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 span { color: var(--accent); }
+h2 { font-family: var(--f-display); font-size: 1.15rem; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 2px 0 0; }
+.pill { font-family: var(--f-data); font-size: 0.75rem; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.pill.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+
+.banner { border: 1px dashed var(--warn); color: var(--ink); background: color-mix(in srgb, var(--warn) 9%, var(--surface)); border-radius: 10px; padding: 10px 14px; font-size: 0.92rem; }
+
+.people { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.chip {
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;
+}
+.chip .ini { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 0.75rem; background: var(--accent-soft); color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.chip[aria-pressed="true"] .ini { background: var(--surface); color: var(--accent); }
+.chip .w { font-family: var(--f-data); font-weight: 400; font-size: 0.8rem; opacity: 0.8; }
+button.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, transparent); font-weight: 400; font-size: 0.88rem; }
+button.danger.armed { background: var(--bad); color: var(--surface); border-color: var(--bad); }
+
+.grid { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 880px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.main { display: grid; gap: 24px; min-width: 0; }
+
+form { display: grid; gap: 12px; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+input, select {
+  font: inherit; font-size: 16px; color: var(--ink); /* 16px : évite le zoom auto de l'iPhone */ background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0;
+  text-transform: none; letter-spacing: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button {
+  font: inherit; font-weight: 700; cursor: pointer; border-radius: 8px; padding: 9px 14px;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--surface);
+}
+button.ghost { background: transparent; color: var(--accent); }
+button.icon { background: transparent; border: none; color: var(--muted); padding: 4px 8px; font-weight: 400; }
+button.icon:hover { color: var(--bad); }
+
+/* Chiffres clés */
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 12px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 2px; align-content: start; }
+.stat .k { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 700; }
+.stat .v { font-family: var(--f-data); font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat .v small { font-size: 0.8rem; color: var(--muted); font-weight: 400; margin-left: 3px; }
+.stat .n { font-size: 0.82rem; color: var(--muted); }
+.tag { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; margin-top: 4px; justify-self: start; }
+.tag.good { color: var(--good); background: color-mix(in srgb, var(--good) 14%, transparent); }
+.tag.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+.tag.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+
+/* Échelle IMC */
+.scale { position: relative; height: 10px; border-radius: 5px; overflow: hidden; display: flex; }
+.scale i { display: block; height: 100%; }
+.scale-wrap { position: relative; padding-top: 18px; }
+.marker { position: absolute; top: 0; transform: translateX(-50%); font-family: var(--f-data); font-size: 0.75rem; font-weight: 600; }
+.marker::after { content: ""; display: block; width: 2px; height: 22px; background: var(--ink); margin: 1px auto 0; }
+.scale-labels { display: flex; justify-content: space-between; font-family: var(--f-data); font-size: 0.7rem; color: var(--muted); margin-top: 4px; }
+
+/* Objectif */
+.goal-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
+.bar { height: 14px; border-radius: 7px; background: var(--accent-soft); overflow: hidden; }
+.bar > div { height: 100%; background: var(--accent); border-radius: 7px; transition: width .5s ease; }
+.goal-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 18px; }
+.goal-facts div { display: grid; }
+.goal-facts b { font-family: var(--f-data); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+.goal-facts span { font-size: 0.8rem; color: var(--muted); }
+.advice { font-size: 0.9rem; margin: 0; padding-left: 12px; border-left: 3px solid var(--accent); color: var(--ink); }
+.advice.warn { border-color: var(--warn); }
+
+/* Graphique */
+.chart-box { overflow-x: auto; }
+svg.chart { width: 100%; min-width: 520px; height: auto; display: block; }
+svg.chart text { font-family: var(--f-data); font-size: 11px; fill: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+
+/* Journal */
+.log-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+@media (max-width: 480px) { .log-form { grid-template-columns: 1fr 1fr; } .log-form button { grid-column: span 2; } }
+.table-box { overflow-x: auto; max-height: 320px; overflow-y: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); position: sticky; top: 0; background: var(--surface); }
+td.num { font-family: var(--f-data); }
+.up { color: var(--bad); } .down { color: var(--good); }
+.empty { color: var(--muted); font-size: 0.92rem; }
+.foot { color: var(--muted); font-size: 0.8rem; max-width: 70ch; }
+.err { color: var(--bad); font-size: 0.85rem; min-height: 1em; margin: 0; }
+@media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Balance <span>&amp;</span> Cap</h1>
+      <p class="sub">Vos mesures, vos statistiques et la route vers votre poids objectif.</p>
+    </div>
+    <span class="pill" id="saveState">Chargement…</span>
+  </header>
+
+  <div class="banner" id="exampleBanner" hidden>
+    Ce sont des <strong>données d'exemple</strong>. Remplissez votre profil et ajoutez votre première pesée : l'exemple disparaîtra.
+  </div>
+
+  <nav class="people" aria-label="Personnes suivies">
+    <div class="chips" id="peopleChips"></div>
+    <button type="button" class="ghost" id="addPerson">+ Ajouter une personne</button>
+  </nav>
+
+  <div class="grid">
+    <aside class="panel">
+      <h2 id="profileTitle">Profil</h2>
+      <form id="profileForm">
+        <label>Prénom<input id="pName" type="text" autocomplete="given-name" placeholder="Votre prénom"></label>
+        <div class="row2">
+          <label>Sexe
+            <select id="pSex"><option value="h">Homme</option><option value="f">Femme</option></select>
+          </label>
+          <label>Âge<input id="pAge" type="number" min="12" max="110" step="1" required></label>
+        </div>
+        <div class="row2">
+          <label>Taille (cm)<input id="pHeight" type="number" min="100" max="250" step="0.5" required></label>
+          <label>Poids actuel (kg)<input id="pWeight" type="number" min="25" max="350" step="0.1" required></label>
+        </div>
+        <label>Activité physique
+          <select id="pActivity">
+            <option value="1.2">Sédentaire (bureau, peu de sport)</option>
+            <option value="1.375">Légère (1 à 3 séances / semaine)</option>
+            <option value="1.55">Modérée (3 à 5 séances / semaine)</option>
+            <option value="1.725">Élevée (6 à 7 séances / semaine)</option>
+            <option value="1.9">Très élevée (travail physique + sport)</option>
+          </select>
+        </label>
+        <h2 style="margin-top:6px">Mon objectif</h2>
+        <div class="row2">
+          <label>Poids visé (kg)<input id="pGoal" type="number" min="25" max="350" step="0.1" required></label>
+          <label>Date visée<input id="pDate" type="date"></label>
+        </div>
+        <button type="submit" id="saveProfile">Enregistrer le profil</button>
+        <button type="button" class="ghost" id="cancelNew" hidden>Annuler</button>
+        <p class="err" id="profileErr"></p>
+        <button type="button" class="ghost danger" id="delPerson">Supprimer cette personne</button>
+      </form>
+    </aside>
+
+    <div class="main">
+      <section class="stats" id="stats" aria-label="Statistiques"></section>
+
+      <section class="panel" aria-labelledby="imcTitle">
+        <h2 id="imcTitle">Où se situe votre IMC</h2>
+        <div class="scale-wrap">
+          <div class="marker" id="bmiMarker"></div>
+          <div class="scale" id="bmiScale"></div>
+          <div class="scale-labels"><span>15</span><span>18,5</span><span>25</span><span>30</span><span>35</span><span>40</span></div>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="goalTitle">
+        <div class="goal-head">
+          <h2 id="goalTitle">Progression vers l'objectif</h2>
+          <span class="pill" id="goalPct">0 %</span>
+        </div>
+        <div class="bar"><div id="goalBar" style="width:0"></div></div>
+        <div class="goal-facts" id="goalFacts"></div>
+        <p class="advice" id="goalAdvice"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="chartTitle">
+        <h2 id="chartTitle">Évolution du poids</h2>
+        <div class="chart-box"><svg class="chart" id="chart" viewBox="0 0 680 280" role="img" aria-label="Courbe du poids"></svg></div>
+        <div class="legend">
+          <span><i style="background:var(--accent)"></i>Pesées</span>
+          <span><i style="background:var(--muted)"></i>Moyenne sur 7 pesées</span>
+          <span><i style="background:var(--good)"></i>Objectif</span>
+          <span><i style="background:var(--warn)"></i>Projection au rythme actuel</span>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="logTitle">
+        <h2 id="logTitle">Journal des pesées</h2>
+        <form class="log-form" id="logForm">
+          <label>Date<input id="lDate" type="date" required></label>
+          <label>Poids (kg)<input id="lWeight" type="number" min="25" max="350" step="0.1" required></label>
+          <button type="submit">Ajouter</button>
+        </form>
+        <p class="err" id="logErr"></p>
+        <div class="table-box"><table>
+          <thead><tr><th>Date</th><th>Poids</th><th>Écart</th><th>IMC</th><th></th></tr></thead>
+          <tbody id="logBody"></tbody>
+        </table></div>
+      </section>
+
+      <p class="foot">Calculs : IMC (OMS), métabolisme de base (Mifflin-St Jeor), masse grasse estimée (Deurenberg), 1 kg de graisse ≈ 7 700 kcal. Ce sont des estimations générales, pas un avis médical. Parlez-en à un professionnel de santé avant un changement important.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d = 1) => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const DAY = 86400000;
+const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+const toTime = (iso) => new Date(iso + "T12:00:00").getTime();
+const fmtDate = (iso) => new Date(iso + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+
+function exampleState() {
+  const entries = [];
+  let w = 84.6;
+  for (let i = 56; i >= 0; i -= 4) {
+    const d = new Date(Date.now() - i * DAY).toISOString().slice(0, 10);
+    entries.push({ d, w: Math.round(w * 10) / 10 });
+    w -= 0.25 + ((i * 7) % 5) / 20 - 0.1;
+  }
+  return {
+    example: true,
+    profile: { name: "Exemple", sex: "h", age: 34, height: 178, weight: entries.at(-1).w, activity: 1.375, goal: 76, date: new Date(Date.now() + 120 * DAY).toISOString().slice(0, 10) },
+    entries,
+  };
+}
+
+// Carnet : toutes les personnes suivies ; `state` pointe sur la personne affichée.
+const newId = () => "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function exampleBook() {
+  const a = exampleState();
+  const b = exampleState();
+  b.profile = { ...b.profile, name: "Exemple 2", sex: "f", age: 29, height: 165, goal: 58 };
+  b.entries = b.entries.map((e) => ({ d: e.d, w: Math.round((e.w - 22.5) * 10) / 10 }));
+  b.profile.weight = b.entries.at(-1).w;
+  const people = [{ id: "ex1", profile: a.profile, entries: a.entries }, { id: "ex2", profile: b.profile, entries: b.entries }];
+  return { example: true, current: "ex1", people };
+}
+let book = exampleBook();
+let state = book.people[0];
+let creating = false; // formulaire en mode « nouvelle personne »
+
+function selectPerson(id) {
+  state = book.people.find((p) => p.id === id) || book.people[0];
+  book.current = state.id;
+}
+
+/* ---------- Sauvegarde : sur l'appareil ---------- */
+const LS_KEY = "balance-cap-v1";
+let store = null;
+let saving = Promise.resolve();
+
+function setSaveState(text, warn) {
+  $("saveState").textContent = text;
+  $("saveState").classList.toggle("warn", !!warn);
+}
+
+function lsStore() {
+  try {
+    localStorage.setItem(LS_KEY + "-test", "1");
+    localStorage.removeItem(LS_KEY + "-test");
+    return {
+      label: "Enregistré sur cet appareil",
+      load: async () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch { return null; } },
+      save: async (data) => { localStorage.setItem(LS_KEY, JSON.stringify(data)); },
+    };
+  } catch { return null; }
+}
+
+async function initStore() {
+  store = lsStore();
+  if (!store) { setSaveState("Non enregistré (stockage indisponible)", true); return; }
+  try {
+    const data = await store.load();
+    let people = null;
+    if (data && Array.isArray(data.people) && data.people.length) {
+      people = data.people.map((p) => ({ id: p.id || newId(), profile: p.profile, entries: Array.isArray(p.entries) ? p.entries.slice() : [] }));
+    } else if (data && data.profile) {
+      people = [{ id: newId(), profile: data.profile, entries: Array.isArray(data.entries) ? data.entries.slice() : [] }];
+    }
+    if (people) {
+      book = { example: false, current: data.current, people };
+      selectPerson(data.current);
+      fillForm();
+      render();
+      setSaveState(store.label);
+    }
+  } catch {
+    setSaveState("Lecture impossible, réessayez plus tard", true);
+  }
+}
+
+function persist() {
+  if (!store || book.example) return;
+  const data = JSON.parse(JSON.stringify({ current: book.current, people: book.people }));
+  setSaveState("Enregistrement…");
+  saving = saving.then(() => store.save(data))
+    .then(() => setSaveState(store.label))
+    .catch(() => setSaveState("Échec de l'enregistrement", true));
+}
+
+/* ---------- Calculs ---------- */
+function calc() {
+  const p = state.profile;
+  const entries = [...state.entries].sort((a, b) => a.d.localeCompare(b.d));
+  const w = entries.length ? entries.at(-1).w : p.weight;
+  const hm = p.height / 100;
+  const bmi = w / (hm * hm);
+  const bmr = 10 * w + 6.25 * p.height - 5 * p.age + (p.sex === "h" ? 5 : -161);
+  const tdee = bmr * p.activity;
+  const fat = 1.2 * bmi + 0.23 * p.age - 10.8 * (p.sex === "h" ? 1 : 0) - 5.4;
+  const idealMin = 18.5 * hm * hm, idealMax = 24.9 * hm * hm;
+  const water = w * 0.035;
+  const losing = p.goal < w;
+  const protein = w * (losing ? 1.6 : 1.2);
+
+  // Tendance : régression linéaire sur les 45 derniers jours
+  const now = entries.length ? toTime(entries.at(-1).d) : Date.now();
+  const recent = entries.filter((e) => now - toTime(e.d) <= 45 * DAY);
+  let slope = null; // kg par jour
+  if (recent.length >= 2) {
+    const xs = recent.map((e) => (toTime(e.d) - now) / DAY), ys = recent.map((e) => e.w);
+    const mx = xs.reduce((a, b) => a + b) / xs.length, my = ys.reduce((a, b) => a + b) / ys.length;
+    let num = 0, den = 0;
+    xs.forEach((x, i) => { num += (x - mx) * (ys[i] - my); den += (x - mx) ** 2; });
+    if (den > 0) slope = num / den;
+  }
+
+  const start = entries.length ? entries[0].w : w;
+  const total = start - p.goal;
+  const done = start - w;
+  const pct = total === 0 ? 100 : Math.max(0, Math.min(100, (done / total) * 100));
+  const remaining = w - p.goal;
+
+  let eta = null;
+  if (slope && Math.abs(remaining) > 0.05 && Math.sign(slope) === -Math.sign(remaining)) {
+    eta = now + Math.abs(remaining / slope) * DAY;
+  }
+
+  let daysLeft = null, weeklyNeeded = null, kcalTarget = null;
+  if (p.date) {
+    daysLeft = Math.round((toTime(p.date) - Date.now()) / DAY);
+    if (daysLeft > 0) {
+      weeklyNeeded = (-remaining / daysLeft) * 7;
+      kcalTarget = tdee + (-remaining * 7700) / daysLeft;
+    }
+  }
+  return { entries, w, bmi, bmr, tdee, fat, idealMin, idealMax, water, protein, slope, start, pct, remaining, eta, daysLeft, weeklyNeeded, kcalTarget, losing };
+}
+
+function bmiClass(b) {
+  if (b < 18.5) return ["Insuffisance pondérale", "warn"];
+  if (b < 25) return ["Corpulence normale", "good"];
+  if (b < 30) return ["Surpoids", "warn"];
+  if (b < 35) return ["Obésité modérée", "bad"];
+  if (b < 40) return ["Obésité sévère", "bad"];
+  return ["Obésité morbide", "bad"];
+}
+
+/* ---------- Rendu ---------- */
+function stat(k, v, unit, note, tag) {
+  return `<div class="stat"><span class="k">${k}</span><span class="v">${v}<small>${unit}</small></span>${note ? `<span class="n">${note}</span>` : ""}${tag ? `<span class="tag ${tag[1]}">${tag[0]}</span>` : ""}</div>`;
+}
+
+function render() {
+  const p = state.profile, c = calc();
+  $("exampleBanner").hidden = !book.example;
+  renderPeople();
+
+  const [cls, tone] = bmiClass(c.bmi);
+  const minSafe = p.sex === "h" ? 1500 : 1200;
+  $("stats").innerHTML = [
+    stat("Poids actuel", fmt(c.w), "kg", c.entries.length > 1 ? `${c.w - c.start <= 0 ? "" : "+"}${fmt(c.w - c.start)} kg depuis le début` : "Première mesure"),
+    stat("IMC", fmt(c.bmi), "", `${p.height} cm, ${p.age} ans`, [cls, tone]),
+    stat("Poids santé", `${fmt(c.idealMin, 0)}–${fmt(c.idealMax, 0)}`, "kg", "IMC entre 18,5 et 24,9"),
+    stat("Masse grasse est.", fmt(Math.max(3, c.fat)), "%", p.sex === "h" ? "Repère : 10 à 20 %" : "Repère : 18 à 28 %"),
+    stat("Métabolisme de base", fmt(c.bmr, 0), "kcal", "Dépense au repos sur 24 h"),
+    stat("Dépense journalière", fmt(c.tdee, 0), "kcal", "Avec votre niveau d'activité"),
+    stat("Eau conseillée", fmt(c.water), "L/jour", "35 ml par kg"),
+    stat("Protéines", fmt(c.protein, 0), "g/jour", c.losing ? "1,6 g/kg pour garder le muscle" : "1,2 g/kg"),
+  ].join("");
+
+  // Échelle IMC (15 → 40)
+  const seg = [[15, 18.5, "var(--warn)"], [18.5, 25, "var(--good)"], [25, 30, "var(--warn)"], [30, 35, "var(--bad)"], [35, 40, "color-mix(in srgb, var(--bad) 70%, var(--ink))"]];
+  $("bmiScale").innerHTML = seg.map(([a, b, col]) => `<i style="width:${((b - a) / 25) * 100}%;background:${col}"></i>`).join("");
+  const pos = Math.max(0, Math.min(100, ((c.bmi - 15) / 25) * 100));
+  $("bmiMarker").style.left = pos + "%";
+  $("bmiMarker").textContent = fmt(c.bmi);
+
+  // Objectif
+  $("goalPct").textContent = `${fmt(c.pct, 0)} %`;
+  $("goalBar").style.width = c.pct + "%";
+  const rateTxt = c.slope == null ? "—" : `${c.slope * 7 > 0 ? "+" : ""}${fmt(c.slope * 7, 2)} kg`;
+  const facts = [
+    [`${fmt(c.start)} → ${fmt(p.goal)} kg`, "Départ → objectif"],
+    [`${fmt(Math.abs(c.remaining))} kg`, c.remaining > 0 ? "Encore à perdre" : c.remaining < 0 ? "Encore à prendre" : "Objectif atteint"],
+    [rateTxt, "Rythme actuel par semaine"],
+    [c.eta ? fmtDate(new Date(c.eta).toISOString().slice(0, 10)) : "—", "Arrivée estimée à ce rythme"],
+  ];
+  if (c.daysLeft != null) facts.push([c.daysLeft > 0 ? `${c.daysLeft} jours` : "Dépassée", `Avant le ${fmtDate(p.date)}`]);
+  if (c.kcalTarget) facts.push([`${fmt(c.kcalTarget, 0)} kcal`, "Apport quotidien pour tenir la date"]);
+  $("goalFacts").innerHTML = facts.map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("");
+
+  const adv = $("goalAdvice");
+  adv.classList.remove("warn");
+  if (Math.abs(c.remaining) < 0.3) {
+    adv.textContent = "Objectif atteint. Gardez un apport proche de votre dépense journalière pour vous stabiliser.";
+  } else if (c.weeklyNeeded != null && Math.abs(c.weeklyNeeded) > (c.losing ? 1 : 0.5)) {
+    adv.classList.add("warn");
+    adv.textContent = `Pour tenir la date, il faudrait ${c.losing ? "perdre" : "prendre"} ${fmt(Math.abs(c.weeklyNeeded), 2)} kg par semaine. C'est plus que le rythme conseillé (${c.losing ? "0,5 à 1 kg" : "0,25 à 0,5 kg"} / semaine) : repoussez la date visée.`;
+  } else if (c.kcalTarget && c.kcalTarget < minSafe) {
+    adv.classList.add("warn");
+    adv.textContent = `L'apport calculé descend sous ${minSafe} kcal par jour. Repoussez la date ou augmentez l'activité plutôt que de manger moins.`;
+  } else if (c.kcalTarget) {
+    adv.textContent = `Visez environ ${fmt(c.kcalTarget, 0)} kcal par jour, soit ${fmt(Math.abs(c.tdee - c.kcalTarget), 0)} kcal ${c.losing ? "de moins" : "de plus"} que votre dépense, pour ${c.losing ? "perdre" : "prendre"} ${fmt(Math.abs(c.weeklyNeeded), 2)} kg par semaine.`;
+  } else {
+    adv.textContent = "Ajoutez une date visée pour obtenir l'apport calorique conseillé.";
+  }
+
+  renderChart(c);
+  renderLog(c);
+}
+
+function renderChart(c) {
+  const svg = $("chart"), p = state.profile, es = c.entries;
+  const W = 680, H = 280, L = 46, R = 16, T = 16, B = 34;
+  if (!es.length) {
+    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle">Ajoutez une pesée pour voir la courbe</text>`;
+    return;
+  }
+  const t0 = toTime(es[0].d);
+  let t1 = toTime(es.at(-1).d);
+  const endProj = c.eta && c.eta - t1 < 365 * DAY ? c.eta : null;
+  const goalT = p.date ? toTime(p.date) : null;
+  t1 = Math.max(t1, endProj || 0, goalT && goalT - t1 < 365 * DAY ? goalT : 0, t0 + 7 * DAY);
+  const ws = es.map((e) => e.w).concat([p.goal]);
+  let y0 = Math.floor(Math.min(...ws) - 1), y1 = Math.ceil(Math.max(...ws) + 1);
+  const x = (t) => L + ((t - t0) / (t1 - t0)) * (W - L - R);
+  const y = (v) => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+
+  let out = "";
+  const step = Math.max(1, Math.ceil((y1 - y0) / 6));
+  for (let v = y0; v <= y1; v += step) {
+    out += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/>`;
+    out += `<text x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  }
+  const ticks = 5;
+  for (let i = 0; i <= ticks; i++) {
+    const t = t0 + ((t1 - t0) * i) / ticks;
+    const lab = new Date(t).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+    out += `<text x="${x(t)}" y="${H - 10}" text-anchor="${i === 0 ? "start" : i === ticks ? "end" : "middle"}">${lab}</text>`;
+  }
+  // Objectif
+  out += `<line x1="${L}" x2="${W - R}" y1="${y(p.goal)}" y2="${y(p.goal)}" stroke="var(--good)" stroke-width="1.5" stroke-dasharray="6 5"/>`;
+  out += `<text x="${W - R}" y="${y(p.goal) - 6}" text-anchor="end" style="fill:var(--good)">objectif ${fmt(p.goal)} kg</text>`;
+  if (goalT && goalT <= t1 && goalT >= t0) {
+    out += `<circle cx="${x(goalT)}" cy="${y(p.goal)}" r="4" fill="var(--good)"/>`;
+  }
+  // Aire + courbe
+  const pts = es.map((e) => [x(toTime(e.d)), y(e.w)]);
+  const line = pts.map((pt, i) => (i ? "L" : "M") + pt[0].toFixed(1) + " " + pt[1].toFixed(1)).join(" ");
+  out += `<path d="${line} L${pts.at(-1)[0]} ${H - B} L${pts[0][0]} ${H - B} Z" fill="var(--accent)" fill-opacity="0.1" stroke="none"/>`;
+  // Moyenne mobile
+  if (es.length >= 3) {
+    const ma = es.map((e, i) => {
+      const s = es.slice(Math.max(0, i - 6), i + 1);
+      return [x(toTime(e.d)), y(s.reduce((a, b) => a + b.w, 0) / s.length)];
+    });
+    out += `<path d="${ma.map((pt, i) => (i ? "L" : "M") + pt[0].toFixed(1) + " " + pt[1].toFixed(1)).join(" ")}" fill="none" stroke="var(--muted)" stroke-width="1.5"/>`;
+  }
+  // Projection
+  if (endProj) {
+    out += `<line x1="${pts.at(-1)[0]}" y1="${pts.at(-1)[1]}" x2="${x(endProj)}" y2="${y(p.goal)}" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="3 4"/>`;
+  }
+  out += `<path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+  pts.forEach((pt, i) => {
+    const last = i === pts.length - 1;
+    out += `<circle cx="${pt[0]}" cy="${pt[1]}" r="${last ? 5 : 3}" fill="${last ? "var(--accent)" : "var(--surface)"}" stroke="var(--accent)" stroke-width="2"><title>${fmtDate(es[i].d)} : ${fmt(es[i].w)} kg</title></circle>`;
+  });
+  const lp = pts.at(-1);
+  out += `<text x="${Math.min(lp[0], W - R - 4)}" y="${lp[1] - 10}" text-anchor="end" style="fill:var(--ink);font-weight:600">${fmt(es.at(-1).w)} kg</text>`;
+  svg.innerHTML = out;
+}
+
+function renderLog(c) {
+  const es = c.entries, hm = state.profile.height / 100;
+  if (!es.length) {
+    $("logBody").innerHTML = `<tr><td colspan="5" class="empty">Aucune pesée pour l'instant. Ajoutez la première ci-dessus.</td></tr>`;
+    return;
+  }
+  $("logBody").innerHTML = es.map((e, i) => {
+    const diff = i ? e.w - es[i - 1].w : null;
+    const cls = diff == null ? "" : diff > 0 ? "up" : diff < 0 ? "down" : "";
+    return { i, html: `<tr><td>${fmtDate(e.d)}</td><td class="num">${fmt(e.w)} kg</td><td class="num ${cls}">${diff == null ? "—" : (diff > 0 ? "+" : "") + fmt(diff)}</td><td class="num">${fmt(e.w / (hm * hm))}</td><td><button class="icon" data-del="${e.d}" aria-label="Supprimer la pesée du ${fmtDate(e.d)}">✕</button></td></tr>` };
+  }).reverse().map((r) => r.html).join("");
+}
+
+const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+const nameOf = (p) => p.profile.name || "Sans nom";
+
+function renderPeople() {
+  $("peopleChips").innerHTML = book.people.map((p) => {
+    const last = [...p.entries].sort((a, b) => a.d.localeCompare(b.d)).at(-1);
+    const w = last ? last.w : p.profile.weight;
+    return `<button type="button" class="chip" data-person="${esc(p.id)}" aria-pressed="${p.id === state.id && !creating}"><span class="ini">${esc(nameOf(p).charAt(0).toUpperCase())}</span>${esc(nameOf(p))}<span class="w">${fmt(w)} kg</span></button>`;
+  }).join("");
+  $("profileTitle").textContent = creating ? "Nouvelle personne" : `Profil de ${nameOf(state)}`;
+  $("saveProfile").textContent = creating ? "Créer la personne" : "Enregistrer le profil";
+  $("cancelNew").hidden = !creating;
+  $("delPerson").hidden = creating || book.example;
+}
+
+/* ---------- Formulaires ---------- */
+function fillForm() {
+  const p = state.profile;
+  $("pName").value = book.example ? "" : p.name || "";
+  $("pSex").value = p.sex; $("pAge").value = p.age; $("pHeight").value = p.height;
+  $("pWeight").value = p.weight; $("pActivity").value = String(p.activity);
+  $("pGoal").value = p.goal; $("pDate").value = p.date || "";
+}
+
+$("profileForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const num = (id) => parseFloat($(id).value);
+  const prof = {
+    name: $("pName").value.trim(), sex: $("pSex").value, age: num("pAge"), height: num("pHeight"),
+    weight: num("pWeight"), activity: parseFloat($("pActivity").value), goal: num("pGoal"), date: $("pDate").value || "",
+  };
+  if ([prof.age, prof.height, prof.weight, prof.goal].some((v) => !isFinite(v))) {
+    $("profileErr").textContent = "Renseignez l'âge, la taille, le poids et le poids visé.";
+    return;
+  }
+  $("profileErr").textContent = "";
+  if (book.example) {
+    const id = newId();
+    book = { example: false, current: id, people: [{ id, profile: prof, entries: [] }] };
+    selectPerson(id);
+  } else if (creating) {
+    const id = newId();
+    book.people.push({ id, profile: prof, entries: [] });
+    selectPerson(id);
+  }
+  creating = false;
+  state.profile = prof;
+  // Le poids saisi dans le profil devient la pesée du jour
+  const today = todayISO();
+  const existing = state.entries.find((e) => e.d === today);
+  const latest = [...state.entries].sort((a, b) => a.d.localeCompare(b.d)).at(-1);
+  if (!latest || latest.w !== prof.weight) {
+    if (existing) existing.w = prof.weight; else state.entries.push({ d: today, w: prof.weight });
+  }
+  persist();
+  render();
+});
+
+$("logForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const d = $("lDate").value, w = parseFloat($("lWeight").value);
+  if (!d || !isFinite(w)) { $("logErr").textContent = "Indiquez une date et un poids."; return; }
+  $("logErr").textContent = "";
+  if (creating) { $("logErr").textContent = "Créez d'abord la personne avec le formulaire de profil."; return; }
+  if (book.example) {
+    const id = newId();
+    book = { example: false, current: id, people: [{ id, profile: { ...state.profile, name: "", weight: w }, entries: [] }] };
+    selectPerson(id);
+  }
+  const existing = state.entries.find((e) => e.d === d);
+  if (existing) existing.w = w; else state.entries.push({ d, w });
+  const latest = [...state.entries].sort((a, b) => a.d.localeCompare(b.d)).at(-1);
+  state.profile.weight = latest.w;
+  $("lWeight").value = "";
+  fillForm();
+  persist();
+  render();
+});
+
+$("logBody").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-del]");
+  if (!btn) return;
+  if (book.example) { $("logErr").textContent = "Ce sont des données d'exemple : ajoutez votre propre pesée."; return; }
+  state.entries = state.entries.filter((e) => e.d !== btn.dataset.del);
+  persist();
+  render();
+});
+
+/* ---------- Personnes ---------- */
+$("peopleChips").addEventListener("click", (ev) => {
+  const chip = ev.target.closest("[data-person]");
+  if (!chip) return;
+  creating = false;
+  selectPerson(chip.dataset.person);
+  $("profileErr").textContent = ""; $("logErr").textContent = "";
+  fillForm();
+  render();
+  if (!book.example) persist();
+});
+
+$("addPerson").addEventListener("click", () => {
+  creating = true;
+  $("profileForm").reset();
+  $("pActivity").value = "1.375";
+  $("profileErr").textContent = "";
+  renderPeople();
+  $("pName").focus();
+});
+
+$("cancelNew").addEventListener("click", () => {
+  creating = false;
+  fillForm();
+  render();
+});
+
+let delTimer = null;
+$("delPerson").addEventListener("click", () => {
+  const btn = $("delPerson");
+  if (!btn.classList.contains("armed")) {
+    btn.classList.add("armed");
+    btn.textContent = `Confirmer : supprimer ${nameOf(state)} et ses pesées`;
+    clearTimeout(delTimer);
+    delTimer = setTimeout(() => { btn.classList.remove("armed"); btn.textContent = "Supprimer cette personne"; }, 5000);
+    return;
+  }
+  clearTimeout(delTimer);
+  btn.classList.remove("armed");
+  btn.textContent = "Supprimer cette personne";
+  book.people = book.people.filter((p) => p.id !== state.id);
+  if (!book.people.length) {
+    book = exampleBook();
+    state = book.people[0];
+    if (store) {
+      saving = saving.then(() => store.save({ current: "", people: [] })).catch(() => {});
+      setSaveState("Données d'exemple", true);
+    }
+  } else {
+    selectPerson(book.people[0].id);
+    persist();
+  }
+  fillForm();
+  render();
+});
+
+$("lDate").value = todayISO();
+fillForm();
+render();
+setSaveState("Données d'exemple", true);
+initStore();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
+</script>
+</body>
+</html>
