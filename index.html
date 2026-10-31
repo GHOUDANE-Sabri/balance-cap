@@ -134,6 +134,19 @@ button.icon:hover { color: var(--bad); }
 .advice { font-size: 0.9rem; margin: 0; padding-left: 12px; border-left: 3px solid var(--accent); color: var(--ink); }
 .advice.warn { border-color: var(--warn); }
 
+/* Tour de taille et eau */
+.inline-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.verdict { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.verdict .tag { margin-top: 0; font-size: 0.85rem; padding: 3px 10px; }
+.water-now { font-family: var(--f-data); font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.water-now small { font-size: 0.85rem; color: var(--muted); font-weight: 400; }
+.water-btns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.water-btns button { padding-inline: 2px; white-space: nowrap; }
+.water-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.water-days div { display: grid; gap: 3px; justify-items: stretch; text-align: center; font-family: var(--f-data); font-size: 0.7rem; color: var(--muted); }
+.water-days .col { height: 48px; display: flex; align-items: flex-end; background: var(--accent-soft); border-radius: 5px; overflow: hidden; }
+.water-days .col i { display: block; width: 100%; background: var(--accent); }
+
 /* Graphique */
 .chart-box { overflow-x: auto; }
 svg.chart { width: 100%; min-width: 520px; height: auto; display: block; }
@@ -223,6 +236,39 @@ td.num { font-family: var(--f-data); }
         </div>
       </section>
 
+      <section class="panel" aria-labelledby="waistTitle">
+        <h2 id="waistTitle">Tour de taille : êtes-vous vraiment en obésité ?</h2>
+        <form class="inline-form" id="waistForm">
+          <label>Tour de taille (cm)<input id="wWaist" type="number" min="40" max="250" step="0.5" required></label>
+          <button type="submit">Calculer</button>
+        </form>
+        <p class="err" id="waistErr"></p>
+        <div class="verdict" id="waistVerdict"></div>
+        <div class="goal-facts" id="waistFacts"></div>
+        <p class="advice" id="waistAdvice"></p>
+      </section>
+
+      <section class="panel" aria-labelledby="waterTitle">
+        <div class="goal-head">
+          <h2 id="waterTitle">Eau bue aujourd'hui</h2>
+          <span class="pill" id="waterPct">0 %</span>
+        </div>
+        <div class="water-now" id="waterNow"></div>
+        <div class="bar"><div id="waterBar" style="width:0"></div></div>
+        <div class="water-btns" id="waterBtns">
+          <button type="button" data-ml="250">+ 25 cl</button>
+          <button type="button" data-ml="330">+ 33 cl</button>
+          <button type="button" data-ml="500">+ 50 cl</button>
+          <button type="button" class="ghost" data-ml="-250">− 25 cl</button>
+        </div>
+        <form class="inline-form" id="waterForm">
+          <label>Autre quantité (cl)<input id="wAmount" type="number" min="1" max="500" step="1" required></label>
+          <button type="submit">Ajouter</button>
+        </form>
+        <p class="err" id="waterErr"></p>
+        <div class="water-days" id="waterDays" role="img" aria-label="Eau bue sur les 7 derniers jours"></div>
+      </section>
+
       <section class="panel" aria-labelledby="goalTitle">
         <div class="goal-head">
           <h2 id="goalTitle">Progression vers l'objectif</h2>
@@ -258,7 +304,7 @@ td.num { font-family: var(--f-data); }
         </table></div>
       </section>
 
-      <p class="foot">Calculs : IMC (OMS), métabolisme de base (Mifflin-St Jeor), masse grasse estimée (Deurenberg), 1 kg de graisse ≈ 7 700 kcal. Ce sont des estimations générales, pas un avis médical. Parlez-en à un professionnel de santé avant un changement important.</p>
+      <p class="foot">Calculs : IMC (OMS), métabolisme de base (Mifflin-St Jeor), masse grasse estimée (Deurenberg), tour de taille (seuils OMS, critères de la commission du Lancet sur l'obésité, 2025), 1 kg de graisse ≈ 7 700 kcal. Ce sont des estimations générales, pas un avis médical. Parlez-en à un professionnel de santé avant un changement important.</p>
     </div>
   </div>
 </div>
@@ -281,7 +327,7 @@ function exampleState() {
   }
   return {
     example: true,
-    profile: { name: "Exemple", sex: "h", age: 34, height: 178, weight: entries.at(-1).w, activity: 1.375, goal: 76, date: new Date(Date.now() + 120 * DAY).toISOString().slice(0, 10) },
+    profile: { name: "Exemple", sex: "h", age: 34, height: 178, weight: entries.at(-1).w, activity: 1.375, goal: 76, date: new Date(Date.now() + 120 * DAY).toISOString().slice(0, 10), waist: 92 },
     entries,
   };
 }
@@ -291,7 +337,7 @@ const newId = () => "p" + Date.now().toString(36) + Math.random().toString(36).s
 function exampleBook() {
   const a = exampleState();
   const b = exampleState();
-  b.profile = { ...b.profile, name: "Exemple 2", sex: "f", age: 29, height: 165, goal: 58 };
+  b.profile = { ...b.profile, name: "Exemple 2", sex: "f", age: 29, height: 165, goal: 58, waist: 74 };
   b.entries = b.entries.map((e) => ({ d: e.d, w: Math.round((e.w - 22.5) * 10) / 10 }));
   b.profile.weight = b.entries.at(-1).w;
   const people = [{ id: "ex1", profile: a.profile, entries: a.entries }, { id: "ex2", profile: b.profile, entries: b.entries }];
@@ -335,7 +381,7 @@ async function initStore() {
     const data = await store.load();
     let people = null;
     if (data && Array.isArray(data.people) && data.people.length) {
-      people = data.people.map((p) => ({ id: p.id || newId(), profile: p.profile, entries: Array.isArray(p.entries) ? p.entries.slice() : [] }));
+      people = data.people.map((p) => ({ id: p.id || newId(), profile: p.profile, entries: Array.isArray(p.entries) ? p.entries.slice() : [], water: Array.isArray(p.water) ? p.water.slice() : [] }));
     } else if (data && data.profile) {
       people = [{ id: newId(), profile: data.profile, entries: Array.isArray(data.entries) ? data.entries.slice() : [] }];
     }
@@ -374,6 +420,9 @@ function calc() {
   const water = w * 0.035;
   const losing = p.goal < w;
   const protein = w * (losing ? 1.6 : 1.2);
+  const waist = p.waist || null;
+  const wht = waist ? waist / p.height : null; // rapport tour de taille / taille
+  const rfm = waist ? 64 - 20 * (p.height / waist) + (p.sex === "h" ? 0 : 12) : null; // masse grasse relative (Woolcott)
 
   // Tendance : régression linéaire sur les 45 derniers jours
   const now = entries.length ? toTime(entries.at(-1).d) : Date.now();
@@ -406,7 +455,21 @@ function calc() {
       kcalTarget = tdee + (-remaining * 7700) / daysLeft;
     }
   }
-  return { entries, w, bmi, bmr, tdee, fat, idealMin, idealMax, water, protein, slope, start, pct, remaining, eta, daysLeft, weeklyNeeded, kcalTarget, losing };
+  return { entries, w, bmi, bmr, tdee, fat, idealMin, idealMax, water, protein, waist, wht, rfm, slope, start, pct, remaining, eta, daysLeft, weeklyNeeded, kcalTarget, losing };
+}
+
+// L'IMC seul ne suffit pas : on le confirme avec le tour de taille et le rapport taille (critères Lancet 2025).
+function waistVerdict(c, p) {
+  if (!c.waist) return null;
+  const male = p.sex === "h", high = male ? 102 : 88, watch = male ? 94 : 80;
+  const waistHigh = c.waist >= high, waistWatch = c.waist >= watch, ratioHigh = c.wht >= 0.5;
+  const base = { high, watch, waistHigh, waistWatch, ratioHigh };
+  if (c.bmi >= 40) return { ...base, label: "Obésité confirmée", tone: "bad", text: "Avec un IMC de 40 ou plus, l'excès de graisse est considéré comme certain, quel que soit le tour de taille. Parlez-en à votre médecin." };
+  if (c.bmi >= 30 && (waistHigh || ratioHigh)) return { ...base, label: "Obésité confirmée", tone: "bad", text: "Votre IMC et votre tour de taille vont dans le même sens : l'excès de graisse est probable. Parlez-en à votre médecin." };
+  if (c.bmi >= 30) return { ...base, label: "Obésité non confirmée", tone: "warn", text: "Votre IMC dépasse 30, mais votre tour de taille reste sous les seuils. Votre poids vient peut-être surtout du muscle ou de la carrure. Une mesure de la masse grasse permettrait de trancher." };
+  if (waistHigh && ratioHigh) return { ...base, label: "Obésité abdominale", tone: "bad", text: "Votre IMC est sous 30, mais la graisse se concentre sur le ventre, là où elle est la plus risquée pour le cœur et le diabète. Parlez-en à votre médecin." };
+  if (waistWatch || ratioHigh) return { ...base, label: "À surveiller", tone: "warn", text: "Pas d'obésité, mais votre tour de taille commence à augmenter le risque. Quelques centimètres de moins suffisent à revenir en zone favorable." };
+  return { ...base, label: "Tour de taille favorable", tone: "good", text: "Votre tour de taille ne montre pas d'excès de graisse sur le ventre." };
 }
 
 function bmiClass(b) {
@@ -439,6 +502,7 @@ function render() {
     stat("Dépense journalière", fmt(c.tdee, 0), "kcal", "Avec votre niveau d'activité"),
     stat("Eau conseillée", fmt(c.water), "L/jour", "35 ml par kg"),
     stat("Protéines", fmt(c.protein, 0), "g/jour", c.losing ? "1,6 g/kg pour garder le muscle" : "1,2 g/kg"),
+    c.waist ? stat("Tour de taille", fmt(c.waist, c.waist % 1 ? 1 : 0), "cm", `Rapport taille : ${fmt(c.wht, 2)}`, [waistVerdict(c, p).label, waistVerdict(c, p).tone]) : stat("Tour de taille", "—", "", "À renseigner ci-dessous"),
   ].join("");
 
   // Échelle IMC (15 → 40)
@@ -478,8 +542,58 @@ function render() {
     adv.textContent = "Ajoutez une date visée pour obtenir l'apport calorique conseillé.";
   }
 
+  renderWaist(c);
+  renderWater(c);
   renderChart(c);
   renderLog(c);
+}
+
+function renderWaist(c) {
+  const p = state.profile, v = waistVerdict(c, p);
+  $("waistFacts").hidden = $("waistAdvice").hidden = !v;
+  if (!v) {
+    $("waistVerdict").innerHTML = `<span class="empty">Mesurez à mi-chemin entre la dernière côte et le haut de la hanche, debout, après avoir expiré.</span>`;
+    return;
+  }
+  const fatLimit = p.sex === "h" ? 25 : 35;
+  $("waistVerdict").innerHTML = `<span class="tag ${v.tone}">${v.label}</span><span class="empty">IMC ${fmt(c.bmi)}, tour de taille ${fmt(c.waist, c.waist % 1 ? 1 : 0)} cm</span>`;
+  $("waistFacts").innerHTML = [
+    [fmt(c.wht, 2), `Rapport tour de taille / taille (repère : moins de 0,50)`],
+    [`${v.watch} / ${v.high} cm`, `Seuils ${p.sex === "h" ? "homme" : "femme"} : risque accru / élevé`],
+    [`${fmt(Math.max(3, c.rfm))} %`, `Masse grasse d'après la taille (repère : moins de ${fatLimit} %)`],
+  ].map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("");
+  $("waistAdvice").textContent = v.text + (p.age < 18 ? " Attention : ces seuils sont prévus pour les adultes." : "");
+  $("waistAdvice").classList.toggle("warn", v.tone !== "good");
+}
+
+/* ---------- Eau bue : une ligne par jour, en ml ---------- */
+const dayISO = (back) => { const d = new Date(); d.setDate(d.getDate() - back); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+const waterOn = (d) => ((state.water || []).find((e) => e.d === d) || { ml: 0 }).ml;
+
+function renderWater(c) {
+  const goal = c.water * 1000, drunk = waterOn(todayISO());
+  const pct = Math.min(100, (drunk / goal) * 100);
+  $("waterPct").textContent = `${fmt(pct, 0)} %`;
+  $("waterBar").style.width = pct + "%";
+  $("waterNow").innerHTML = `${fmt(drunk / 1000, 2)} L <small>sur ${fmt(c.water)} L${drunk >= goal ? " : objectif atteint" : `, encore ${fmt((goal - drunk) / 1000, 2)} L`}</small>`;
+  $("waterDays").innerHTML = [6, 5, 4, 3, 2, 1, 0].map((back) => {
+    const d = dayISO(back), ml = waterOn(d);
+    const day = new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "short" }).slice(0, 3);
+    return `<div title="${fmtDate(d)} : ${fmt(ml / 1000, 2)} L"><span class="col"><i style="height:${Math.min(100, (ml / goal) * 100)}%"></i></span>${day}</div>`;
+  }).join("");
+}
+
+function addWater(ml) {
+  if (creating) { $("waterErr").textContent = "Créez d'abord la personne avec le formulaire de profil."; return; }
+  if (book.example) { $("waterErr").textContent = "Ce sont des données d'exemple : enregistrez d'abord votre profil."; return; }
+  $("waterErr").textContent = "";
+  const d = todayISO();
+  state.water = state.water || [];
+  const existing = state.water.find((e) => e.d === d);
+  const total = Math.max(0, (existing ? existing.ml : 0) + ml);
+  if (existing) existing.ml = total; else state.water.push({ d, ml: total });
+  persist();
+  render();
 }
 
 function renderChart(c) {
@@ -578,6 +692,7 @@ function fillForm() {
   $("pSex").value = p.sex; $("pAge").value = p.age; $("pHeight").value = p.height;
   $("pWeight").value = p.weight; $("pActivity").value = String(p.activity);
   $("pGoal").value = p.goal; $("pDate").value = p.date || "";
+  $("wWaist").value = p.waist || "";
 }
 
 $("profileForm").addEventListener("submit", (ev) => {
@@ -586,12 +701,13 @@ $("profileForm").addEventListener("submit", (ev) => {
   const prof = {
     name: $("pName").value.trim(), sex: $("pSex").value, age: num("pAge"), height: num("pHeight"),
     weight: num("pWeight"), activity: parseFloat($("pActivity").value), goal: num("pGoal"), date: $("pDate").value || "",
+    waist: creating || book.example ? null : state.profile.waist ?? null,
   };
   if ([prof.age, prof.height, prof.weight, prof.goal].some((v) => !isFinite(v))) {
     $("profileErr").textContent = "Renseignez l'âge, la taille, le poids et le poids visé.";
     return;
   }
-  $("profileErr").textContent = "";
+  $("profileErr").textContent = $("waistErr").textContent = $("waterErr").textContent = "";
   if (book.example) {
     const id = newId();
     book = { example: false, current: id, people: [{ id, profile: prof, entries: [] }] };
@@ -643,6 +759,34 @@ $("logBody").addEventListener("click", (ev) => {
   persist();
   render();
 });
+
+$("waistForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const waist = parseFloat($("wWaist").value);
+  if (!isFinite(waist)) { $("waistErr").textContent = "Indiquez votre tour de taille."; return; }
+  if (creating) { $("waistErr").textContent = "Créez d'abord la personne avec le formulaire de profil."; return; }
+  if (book.example) { $("waistErr").textContent = "Ce sont des données d'exemple : enregistrez d'abord votre profil."; return; }
+  $("waistErr").textContent = "";
+  state.profile.waist = waist;
+  persist();
+  render();
+});
+
+$("waterBtns").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("[data-ml]");
+  if (btn) addWater(Number(btn.dataset.ml));
+});
+
+$("waterForm").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const cl = parseFloat($("wAmount").value);
+  if (!isFinite(cl) || cl <= 0) { $("waterErr").textContent = "Indiquez une quantité en centilitres."; return; }
+  $("wAmount").value = "";
+  addWater(cl * 10);
+});
+
+// L'application peut rester ouverte d'un jour à l'autre : le compteur repart à zéro le lendemain.
+document.addEventListener("visibilitychange", () => { if (!document.hidden) renderWater(calc()); });
 
 /* ---------- Personnes ---------- */
 $("peopleChips").addEventListener("click", (ev) => {
