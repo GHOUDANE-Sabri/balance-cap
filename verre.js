@@ -1,6 +1,6 @@
 // Mesure d'un verre en photo : l'appli repère seule les bords du verre et le niveau de l'eau, puis calcule le volume.
 // Le verre est vu comme un tronc de cône (haut et fond de largeurs différentes).
-// Sans rien saisir, on suppose un verre standard ; un verre de référence choisi (largeur ou contenance) est retenu sur l'appareil.
+// Sans rien saisir, on suppose un verre standard de 25 cl ; un verre étalonné ou choisi (contenance ou largeur) est retenu sur l'appareil.
 // S'appuie sur les variables globales de index.html (addWater, fmt…) et sur les styles .sheet de details.js.
 (function () {
   const css = document.createElement("style");
@@ -19,6 +19,7 @@
 .glass-ref .opt select, .glass-ref .opt input[type="number"] { width: 110px; }
 .glass-refline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 0.9rem; }
 .glass-refline button { padding: 3px 10px; font-size: 0.85rem; }
+.glass-calib { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font-size: 0.9rem; }
 .glass-result { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
 .glass-result .v { font-family: var(--f-data); font-size: 2.2rem; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .glass-result .v small { font-size: 0.9rem; color: var(--muted); font-weight: 400; margin-left: 4px; }
@@ -42,14 +43,15 @@
 
   /* ---------- Verre de référence, retenu sur l'appareil ---------- */
   const REF_KEY = "balance-cap-verre";
-  // Sans rien connaître du verre, on prend la largeur d'un verre à eau courant (7 à 8 cm en haut).
-  const STD_DIAM = 7.5;
+  // Sans rien connaître du verre, on prend la contenance d'un verre à eau courant. La photo donne surtout
+  // la part du verre qui est remplie ; c'est la contenance qui la change en centilitres.
+  const STD_CAP = 25;
   let ref = { mode: "std", cap: 25, diam: 7 };
   try { Object.assign(ref, JSON.parse(localStorage.getItem(REF_KEY)) || {}); } catch {}
   const saveRef = () => { try { localStorage.setItem(REF_KEY, JSON.stringify(ref)); } catch {} };
   const refText = () => ref.mode === "cap" ? `Verre de ${fmt(ref.cap, 0)} cl plein`
     : ref.mode === "diam" ? `Verre de ${fmt(ref.diam, ref.diam % 1 ? 1 : 0)} cm de large`
-    : "Verre standard (environ 7,5 cm de large)";
+    : `Verre standard (${STD_CAP} cl plein, à étalonner)`;
 
   const MAX_SIDE = 1200; // la photo est réduite : plus rapide et suffisant pour la mesure
   // Cadre du viseur, en fraction de l'image : un verre à eau courant, 1,5 fois plus haut que large.
@@ -373,24 +375,41 @@
     score.forEach((s, j) => { if (s >= (score[j - 1] ?? 0) && s >= (score[j + 1] ?? 0)) cands.push(j); });
     cands.sort((p, q) => score[q] - score[p]);
     const picks = [];
-    for (const j of cands) { if (picks.every((p) => Math.abs(p - j) > k)) picks.push(j); if (picks.length === 3) break; }
+    for (const j of cands) { if (picks.every((p) => Math.abs(p - j) > k)) picks.push(j); if (picks.length === 4) break; }
     const MIN_STEP = 7; // en dessous, l'intérieur du verre ne change pas vraiment de couleur
     // Un vrai niveau : un net changement de couleur, ou une ligne nette sur au moins la moitié de la largeur.
     const strong = (j) => steps[j] >= MIN_STEP || edges[j] >= 0.5;
-    // Le fond épais du verre fait aussi un changement net, tout en bas : c'est le fond intérieur, pas l'eau.
-    let ib = yb;
-    const low = picks.filter((j) => yt + lo + j > yb - span * 0.13 && strong(j)).sort((p, q) => q - p)[0];
-    if (low != null) ib = yt + lo + low;
-    const water = picks.filter((j) => yt + lo + j < ib - k && strong(j)).sort((p, q) => score[q] - score[p])[0];
+    // Le fond épais du verre fait aussi un changement net, dans le bas du verre (plus haut encore vu d'au-dessus,
+    // car il apparaît en ellipse) : c'est le fond intérieur, pas l'eau.
+    // Vu d'en haut, ce fond a deux bords (arrière et avant de son ellipse) : on prend le plus haut.
+    let ib = yb, water;
+    const baseTop = yb - span * 0.22, yOf = (j) => yt + lo + j;
+    const inBase = picks.filter((j) => yOf(j) > baseTop && strong(j)).sort((p, q) => p - q);
+    const above = picks.filter((j) => yOf(j) <= baseTop && strong(j)).sort((p, q) => score[q] - score[p]);
+    if (above.length) { water = above[0]; if (inBase.length) ib = yOf(inBase[0]); }
+    else if (inBase.length >= 2) { water = inBase[0]; ib = yOf(inBase[1]); } // très peu d'eau, juste au-dessus du fond
+    else if (inBase.length) ib = yOf(inBase[0]);
     const empty = water == null;
     let yw = empty ? ib : yt + lo + water;
     // Vue un peu d'en haut, la surface de l'eau est une ellipse : le vrai niveau est au milieu de ses deux bords.
+    // Le rebord du verre et le fond sont aussi des ellipses : on ramène le haut et le fond à leur centre,
+    // avec le même aplatissement que celui de la surface de l'eau.
+    let flat = 0;
     if (!empty) {
-      const j0 = water, reachDown = Math.round(span * 0.08);
+      const j0 = water, reach2 = Math.round(span * 0.08);
       let j1 = -1;
-      for (let j = j0 + 2; j <= Math.min(edges.length - 1, j0 + reachDown); j++) if (edges[j] > edges[j0] * 0.5 && (j1 < 0 || edges[j] > edges[j1])) j1 = j;
-      if (j1 > 0 && yt + lo + j1 < ib) yw = yt + lo + (j0 + j1) / 2;
+      for (let j = Math.max(0, j0 - reach2); j <= Math.min(edges.length - 1, j0 + reach2); j++) {
+        if (Math.abs(j - j0) < 2) continue;
+        if (edges[j] > edges[j0] * 0.5 && (j1 < 0 || edges[j] > edges[j1])) j1 = j;
+      }
+      if (j1 >= 0 && yt + lo + j1 < ib) {
+        yw = yt + lo + (j0 + j1) / 2;
+        const rw = (xAt(LR, yw) - xAt(LL, yw)) / 2;
+        flat = rw > 0 ? Math.min(0.3, Math.abs(j1 - j0) / 2 / rw) : 0;
+      }
     }
+    const rTop = (xAt(LR, yt) - xAt(LL, yt)) / 2, rBot = (xAt(LR, ib) - xAt(LL, ib)) / 2;
+    const ytC = yt + flat * rTop, ibC = Math.min(yb, ib + flat * rBot);
     const contrast = empty ? 0 : steps[water], noise = median(steps);
 
     // Confiance : un changement net (ou une ligne qui traverse le verre) au niveau de l'eau, et deux bords bien droits.
@@ -400,8 +419,8 @@
     const s = src.width / w;
     return {
       pts: {
-        tl: { x: xAt(LL, yt) * s, y: yt * s }, tr: { x: xAt(LR, yt) * s, y: yt * s },
-        bl: { x: xAt(LL, ib) * s, y: ib * s }, br: { x: xAt(LR, ib) * s, y: ib * s },
+        tl: { x: xAt(LL, ytC) * s, y: ytC * s }, tr: { x: xAt(LR, ytC) * s, y: ytC * s },
+        bl: { x: xAt(LL, ibC) * s, y: ibC * s }, br: { x: xAt(LR, ibC) * s, y: ibC * s },
         water: yw * s,
       },
       conf, empty,
@@ -428,14 +447,13 @@
     const water = volPx(pts.water), full = volPx(pts.tl.y);
     if (!(full > 0)) return null;
     let ml, fullMl;
-    if (ref.mode === "cap") {
-      fullMl = ref.cap * 10;
+    if (ref.mode !== "diam") {
+      fullMl = (ref.mode === "cap" ? ref.cap : STD_CAP) * 10;
       if (!isFinite(fullMl) || fullMl <= 0) return null;
       ml = fullMl * (water / full);
     } else {
-      const diam = ref.mode === "diam" ? ref.diam : STD_DIAM;
-      if (!isFinite(diam) || diam <= 0) return null;
-      const cmPerPx = diam / Math.abs(pts.tr.x - pts.tl.x);
+      if (!isFinite(ref.diam) || ref.diam <= 0) return null;
+      const cmPerPx = ref.diam / Math.abs(pts.tr.x - pts.tl.x);
       ml = water * cmPerPx ** 3; // 1 cm³ = 1 ml
       fullMl = full * cmPerPx ** 3;
     }
@@ -465,9 +483,16 @@
         </div>
         <p class="note" id="glassTapHint" style="margin:0">Ligne bleue mal placée ? <b>Touchez la surface de l'eau</b> sur la photo. Contour vert à côté du verre ? <b>Touchez le verre</b> en dehors du contour.</p>
         <p class="note" id="glassHint" style="margin:0" hidden>Faites glisser les points <b>sur les bords intérieurs</b> du verre (haut et fond), puis la ligne bleue <b>sur la surface de l'eau</b>.</p>
-        <div class="glass-refline" id="glassRefLine"><span id="glassRefTxt"></span><button type="button" class="ghost" id="glassRefEdit">Changer de verre</button></div>
+        <div class="glass-refline" id="glassRefLine"><span id="glassRefTxt"></span><button type="button" class="ghost" id="glassCalibOpen">Étalonner ce verre</button><button type="button" class="ghost" id="glassRefEdit">Changer de verre</button></div>
+        <div class="glass-calib" id="glassCalib" hidden>
+          <p style="margin:0"><b>Étalonnage, une seule fois par verre.</b> Versez dans votre verre une quantité connue, par exemple une canette de 33 cl ou la moitié d'une bouteille de 50 cl, puis prenez la photo. Indiquez ici ce que vous avez versé :</p>
+          <form class="inline-form" id="glassCalibForm">
+            <label>Quantité versée (cl)<input id="glassKnown" type="number" min="5" max="200" step="1" required></label>
+            <button type="submit">Étalonner</button>
+          </form>
+        </div>
         <div class="glass-ref" id="glassRef" hidden>
-          <label class="opt"><input type="radio" name="glassRef" value="std"> Je ne sais pas : verre standard (environ 7,5 cm de large)</label>
+          <label class="opt"><input type="radio" name="glassRef" value="std"> Je ne sais pas : verre standard de ${STD_CAP} cl</label>
           <label class="opt"><input type="radio" name="glassRef" value="diam"> Largeur du haut, mesurée à la règle :
             <input id="glassDiam" type="number" min="2" max="30" step="0.1" aria-label="Largeur en cm"> cm
           </label>
@@ -475,14 +500,14 @@
             <select id="glassCapSel">${capOptions.map((c) => `<option value="${c}">${c} cl</option>`).join("")}<option value="">Autre…</option></select>
             <input id="glassCap" type="number" min="1" max="200" step="1" aria-label="Contenance en cl" hidden>
           </label>
-          <p class="note" style="margin:0">Le verre standard donne une idée du volume. Pour un résultat plus juste, mesurez une fois la largeur du haut de votre verre avec une règle : l'appli s'en souviendra.</p>
+          <p class="note" style="margin:0">Le verre standard donne une idée du volume. Pour un résultat juste, étalonnez votre verre une fois avec une quantité connue : l'appli s'en souviendra.</p>
         </div>
         <div class="glass-actions">
           <button type="button" id="glassAdd">Ajouter à l'eau bue</button>
           <button type="button" class="ghost" id="glassFix">Corriger les repères</button>
           <button type="button" class="ghost" id="glassAgain">Autre photo</button>
         </div>
-        <p class="note" style="margin:0">Estimation à ±15 % environ : la perspective, l'épaisseur du verre et un fond bombé faussent un peu la mesure.</p>
+        <p class="note" style="margin:0">La photo mesure surtout la part du verre qui est remplie. Les centilitres dépendent de la contenance du verre : sans étalonnage, ils peuvent être loin de la réalité.</p>
       </div>`;
 
     // Verre de référence : replié, on le change avec « Changer de verre »
@@ -511,6 +536,29 @@
     });
     diam.addEventListener("focus", () => { bg.querySelector("[value=diam]").checked = true; readRef(); });
     $("glassRef").addEventListener("input", readRef);
+
+    // Étalonnage : une quantité connue dans le verre donne sa vraie contenance (quantité ÷ part remplie).
+    $("glassCalibOpen").addEventListener("click", () => {
+      const box = $("glassCalib");
+      box.hidden = !box.hidden;
+      if (!box.hidden) $("glassKnown").focus();
+    });
+    $("glassCalibForm").addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const known = parseFloat($("glassKnown").value), m = measure();
+      if (!isFinite(known) || known <= 0 || !m) { $("glassErr").textContent = "Indiquez la quantité versée, en centilitres."; return; }
+      if (m.pct < 20) { $("glassErr").textContent = "Le verre est trop peu rempli pour étalonner : versez au moins un quart du verre, ou placez la ligne bleue sur l'eau."; return; }
+      ref.mode = "cap";
+      ref.cap = Math.round(known / (m.pct / 100));
+      saveRef();
+      $("glassErr").textContent = "";
+      $("glassCalib").hidden = true;
+      bg.querySelector("[value=cap]").checked = true;
+      const preset = capOptions.includes(ref.cap);
+      capSel.value = preset ? String(ref.cap) : ""; cap.value = ref.cap; cap.hidden = preset;
+      $("glassRefTxt").textContent = `Votre verre : ${fmt(ref.cap, 0)} cl plein (étalonné, retenu pour la suite)`;
+      draw();
+    });
 
     // Repères : verrouillés, sauf si on choisit de les corriger
     const svg = $("glassSvg");
