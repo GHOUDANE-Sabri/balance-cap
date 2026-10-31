@@ -11,24 +11,65 @@
   };
 
   /* ---------- Interface ---------- */
+  // Tout tient dans l'en-tête : un bouton « Se connecter », ou une pastille « Synchronisé » une fois connecté.
+  // Le formulaire et le compte s'ouvrent dans une fenêtre (styles .sheet-bg / .sheet de details.js).
   const css = document.createElement("style");
   css.textContent = `
-.account { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
-.account p { margin: 0; font-size: 0.9rem; flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
-.account form { display: flex; flex-wrap: wrap; gap: 8px; flex: 999 1 420px; align-items: center; }
-.account input { flex: 1 1 160px; width: auto; }
-.account .links { display: flex; flex-wrap: wrap; gap: 4px 12px; width: 100%; }
-.account .link { background: none; border: none; padding: 0; color: var(--accent); font-weight: 400; font-size: 0.85rem; text-decoration: underline; }
-.account .msg { width: 100%; font-size: 0.85rem; color: var(--muted); min-height: 1em; }
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.acct-btn { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; font-size: 0.85rem; }
+.acct-btn.synced { background: color-mix(in srgb, var(--good) 14%, transparent); border-color: transparent; color: var(--good); }
+.acct-btn.synced.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
+.acct-btn.synced:hover { filter: brightness(1.1); }
+body.signed-in #saveState { display: none; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.account { width: min(460px, 100%); }
+.account .sheet-head { align-items: center; }
+.account p { margin: 0; font-size: 0.92rem; overflow-wrap: anywhere; }
+.account form { display: grid; gap: 10px; }
+.account .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.account .link { background: none; border: none; padding: 0; color: var(--accent); font-weight: 400; font-size: 0.85rem; text-decoration: underline; justify-self: start; }
+.account .msg { font-size: 0.85rem; color: var(--muted); min-height: 1em; }
 .account .msg.bad { color: var(--bad); }
-.account .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--good); margin-right: 6px; vertical-align: middle; }
 `;
   document.head.appendChild(css);
 
-  const box = document.createElement("section");
-  box.className = "account";
-  box.setAttribute("aria-label", "Synchronisation");
-  document.querySelector("header").after(box);
+  const saveState = $("saveState");
+  const actions = document.createElement("div");
+  actions.className = "top-actions";
+  saveState.replaceWith(actions);
+  const acctBtn = document.createElement("button");
+  acctBtn.type = "button";
+  acctBtn.className = "ghost acct-btn";
+  acctBtn.hidden = true;
+  actions.append(saveState, acctBtn);
+
+  const bg = document.createElement("div");
+  bg.className = "sheet-bg";
+  bg.hidden = true;
+  bg.innerHTML = `<section class="sheet panel account" role="dialog" aria-modal="true" aria-labelledby="acctTitle"></section>`;
+  document.body.appendChild(bg);
+  const box = bg.querySelector(".account");
+  let signedIn = false;
+
+  const openAcct = () => { bg.hidden = false; document.documentElement.style.overflow = "hidden"; (box.querySelector("input") || box.querySelector(".close")).focus(); };
+  const closeAcct = () => { if (bg.hidden) return; bg.hidden = true; document.documentElement.style.overflow = ""; acctBtn.focus(); };
+  acctBtn.addEventListener("click", openAcct);
+  bg.addEventListener("click", (ev) => { if (ev.target === bg || ev.target.closest(".close")) closeAcct(); });
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeAcct(); });
+
+  // Une fois connecté, la pastille reprend l'état d'enregistrement (Synchronisé, Enregistrement…, Synchro en attente).
+  const baseSetSaveState = setSaveState;
+  window.setSaveState = function (text, warn) {
+    baseSetSaveState(text, warn);
+    if (signedIn) showStatus(text, warn);
+  };
+  function showStatus(text, warn) {
+    acctBtn.className = "acct-btn synced" + (warn ? " warn" : "");
+    acctBtn.innerHTML = `<span class="dot" aria-hidden="true"></span>`;
+    acctBtn.append(text);
+  }
+
+  const head = (title) => `<div class="sheet-head"><h2 id="acctTitle">${title}</h2><button type="button" class="close" aria-label="Fermer">✕</button></div>`;
 
   const msg = (text, bad) => {
     const el = box.querySelector(".msg");
@@ -36,14 +77,21 @@
   };
 
   function showSignedOut() {
-    box.innerHTML = `
-      <p><strong>Synchroniser mes appareils</strong><br>Connectez-vous pour retrouver vos données sur iPhone, ordinateur et tablette.</p>
+    signedIn = false;
+    document.body.classList.remove("signed-in");
+    acctBtn.hidden = false;
+    acctBtn.className = "ghost acct-btn";
+    acctBtn.textContent = "Se connecter";
+    box.innerHTML = `${head("Synchroniser mes appareils")}
+      <p>Connectez-vous pour retrouver vos données sur iPhone, ordinateur et tablette.</p>
       <form id="authForm" novalidate>
         <input id="authEmail" type="email" autocomplete="email" placeholder="Adresse e-mail" required>
         <input id="authPass" type="password" autocomplete="current-password" placeholder="Mot de passe (6 caractères min.)" required>
-        <button type="submit" id="authLogin">Se connecter</button>
-        <button type="button" class="ghost" id="authSignup">Créer un compte</button>
-        <div class="links"><button type="button" class="link" id="authReset">Mot de passe oublié ?</button></div>
+        <div class="row">
+          <button type="submit" id="authLogin">Se connecter</button>
+          <button type="button" class="ghost" id="authSignup">Créer un compte</button>
+        </div>
+        <button type="button" class="link" id="authReset">Mot de passe oublié ?</button>
         <div class="msg" role="status"></div>
       </form>`;
     const email = () => box.querySelector("#authEmail").value.trim();
@@ -68,12 +116,18 @@
   }
 
   function showSignedIn(user) {
-    box.innerHTML = `
-      <p><span class="dot" aria-hidden="true"></span>Synchronisé avec <strong></strong></p>
+    signedIn = true;
+    document.body.classList.add("signed-in");
+    acctBtn.hidden = false;
+    acctBtn.title = `Compte : ${user.email}`;
+    showStatus("Synchronisé");
+    box.innerHTML = `${head("Mon compte")}
+      <p>Synchronisé avec <strong></strong></p>
       <button type="button" class="ghost" id="authLogout">Se déconnecter</button>
       <div class="msg" role="status"></div>`;
     box.querySelector("strong").textContent = user.email;
-    box.querySelector("#authLogout").addEventListener("click", () => auth.signOut());
+    box.querySelector("#authLogout").addEventListener("click", () => { auth.signOut(); closeAcct(); });
+    closeAcct();
   }
 
   function explain(e) {
@@ -87,10 +141,8 @@
     return "Erreur : " + (e && e.message ? e.message : "inconnue");
   }
 
-  if (typeof firebase === "undefined") {
-    box.innerHTML = `<p>Synchronisation indisponible hors connexion. Vos données restent enregistrées sur cet appareil.</p>`;
-    return;
-  }
+  // Hors connexion, pas de bouton : la pastille d'enregistrement suffit.
+  if (typeof firebase === "undefined") return;
 
   /* ---------- Firebase ---------- */
   firebase.initializeApp(firebaseConfig);

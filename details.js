@@ -296,7 +296,7 @@
       el.tabIndex = 0;
       el.setAttribute("role", "button");
       el.setAttribute("aria-haspopup", "dialog");
-      el.dataset.sheet = i;
+      if (el.dataset.sheet == null) el.dataset.sheet = i;
       if (!el.querySelector(".more")) el.insertAdjacentHTML("beforeend", `<span class="more" aria-hidden="true">Détails ›</span>`);
     });
   }
@@ -307,6 +307,12 @@
   $("stats").addEventListener("keydown", (ev) => {
     const el = ev.target.closest(".stat");
     if (el && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); open(Number(el.dataset.sheet), el); }
+  });
+
+  // Les blocs qui n'ont pas de case (eau, tour de taille) ouvrent leur fiche par un lien « Conseils ».
+  document.addEventListener("click", (ev) => {
+    const el = ev.target.closest("[data-open-sheet]");
+    if (el) open(Number(el.dataset.openSheet), el);
   });
 
   const baseRender = render;

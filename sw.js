@@ -1,5 +1,5 @@
 // Garde l'application disponible hors connexion.
-const CACHE = "balance-cap-v11";
+const CACHE = "balance-cap-v12";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./sync.js", "./graphique.js", "./details.js", "./verre.js"];
 
 self.addEventListener("install", (ev) => {

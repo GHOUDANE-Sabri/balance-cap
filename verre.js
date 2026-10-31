@@ -38,7 +38,7 @@
   const open = document.createElement("button");
   open.type = "button";
   open.className = "ghost glass-open";
-  open.textContent = "📷 Mesurer un verre en photo";
+  open.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Mesurer un verre en photo`;
   $("waterBtns").after(open);
 
   /* ---------- Verre de référence, retenu sur l'appareil ---------- */

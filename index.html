@@ -19,28 +19,44 @@
 :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body { margin: 0; -webkit-text-size-adjust: 100%; }
 [hidden] { display: none !important; }
-/* Layout : colonne de profil à gauche, tableau de bord à droite ; tout s'empile sur mobile. */
+/* Tableau de bord : en-tête, puis profil à gauche et chiffres à droite ; tout s'empile sur mobile.
+   Le sarcelle reste la couleur de la marque, le bleu est réservé à l'eau. */
 :root {
-  --bg: #eef3f1;
+  --bg: #f2f5f3;
   --surface: #ffffff;
-  --ink: #15211e;
-  --muted: #5b6b66;
-  --line: #d5dfdb;
-  --accent: #0d6b62;
-  --accent-soft: #d6ebe7;
-  --good: #2f7d3a;
-  --warn: #b26a00;
+  --surface-2: #f6f8f7;
+  --ink: #13201c;
+  --muted: #5c6c67;
+  --line: #e0e7e3;
+  --accent: #0b6e63;
+  --on-accent: #ffffff;
+  --accent-soft: #dcefeb;
+  --water: #2a78c8;
+  --water-soft: #dde9f7;
+  --good: #2c7a37;
+  --warn: #a66300;
   --bad: #b3362b;
+  --shadow: 0 1px 2px rgba(19, 32, 28, 0.05), 0 6px 18px rgba(19, 32, 28, 0.05);
+  --radius: 16px;
   --f-display: "Familjen Grotesk", "Segoe UI", system-ui, sans-serif;
   --f-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
   --f-data: "JetBrains Mono", ui-monospace, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f1715; --surface: #17221f; --ink: #e4ece9; --muted: #95a8a2; --line: #2a3a36;
-    --accent: #4fc2b4; --accent-soft: #183a35; --good: #6cc77a; --warn: #e6a640; --bad: #ef7a6e;
+    --bg: #0b1210; --surface: #131c19; --surface-2: #0f1714; --ink: #e5eeeb; --muted: #92a59f; --line: #22322e;
+    --accent: #4fc2b4; --on-accent: #0b1210; --accent-soft: #163933; --water: #6aaeee; --water-soft: #152c44;
+    --good: #6cc77a; --warn: #e6a640; --bad: #ef7a6e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     color-scheme: dark;
   }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1210; --surface: #131c19; --surface-2: #0f1714; --ink: #e5eeeb; --muted: #92a59f; --line: #22322e;
+  --accent: #4fc2b4; --on-accent: #0b1210; --accent-soft: #163933; --water: #6aaeee; --water-soft: #152c44;
+  --good: #6cc77a; --warn: #e6a640; --bad: #ef7a6e;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body {
@@ -48,149 +64,227 @@ body {
   font-family: var(--f-body); font-size: 15px; line-height: 1.5;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 28px 48px;
+  padding-block: 24px 56px;
 }
-.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 24px; }
-header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; }
-h1 { font-family: var(--f-display); font-size: 2rem; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 20px; }
+
+/* En-tête */
+header { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; }
+header > :last-child { flex: none; }
+@media (max-width: 600px) {
+  header .sub { display: none; }
+  header h1 { font-size: 1.45rem; }
+  header .logo { width: 38px; height: 38px; border-radius: 12px; }
+  header .logo svg { width: 23px; height: 23px; }
+}
+.brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.logo { width: 46px; height: 46px; flex: none; border-radius: 14px; background: var(--accent); color: var(--on-accent); display: grid; place-items: center; }
+.logo svg { width: 28px; height: 28px; }
+h1 { font-family: var(--f-display); font-size: 1.85rem; line-height: 1.1; margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
 h1 span { color: var(--accent); }
-h2 { font-family: var(--f-display); font-size: 1.15rem; margin: 0; text-wrap: balance; }
-.sub { color: var(--muted); margin: 2px 0 0; }
-.pill { font-family: var(--f-data); font-size: 0.75rem; padding: 3px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
-.pill.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+h2 { font-family: var(--f-display); font-size: 1.1rem; letter-spacing: -0.01em; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 2px 0 0; font-size: 0.92rem; }
+.pill { font-family: var(--f-data); font-size: 0.72rem; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.pill.warn { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); }
 
-.banner { border: 1px dashed var(--warn); color: var(--ink); background: color-mix(in srgb, var(--warn) 9%, var(--surface)); border-radius: 10px; padding: 10px 14px; font-size: 0.92rem; }
+.banner { border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); color: var(--ink); background: color-mix(in srgb, var(--warn) 8%, var(--surface)); border-radius: 12px; padding: 10px 14px; font-size: 0.9rem; }
 
-.people { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* Personnes suivies */
+.people { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .chip {
   background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 999px;
-  padding: 6px 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 14px 5px 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: var(--shadow);
 }
-.chip .ini { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 0.75rem; background: var(--accent-soft); color: var(--accent); }
-.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
-.chip[aria-pressed="true"] .ini { background: var(--surface); color: var(--accent); }
-.chip .w { font-family: var(--f-data); font-weight: 400; font-size: 0.8rem; opacity: 0.8; }
-button.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, transparent); font-weight: 400; font-size: 0.88rem; }
-button.danger.armed { background: var(--bad); color: var(--surface); border-color: var(--bad); }
+.chip .ini { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 0.75rem; background: var(--accent-soft); color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.chip[aria-pressed="true"] .ini { background: var(--on-accent); color: var(--accent); }
+.chip .w { font-family: var(--f-data); font-weight: 400; font-size: 0.78rem; opacity: 0.8; }
+.people > button.ghost { border-style: dashed; }
+button.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); background: transparent; font-weight: 400; font-size: 0.88rem; }
+button.danger.armed { background: var(--bad); color: #fff; border-color: var(--bad); }
 
-.grid { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 24px; align-items: start; }
-@media (max-width: 880px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; container: page / inline-size; }
 
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
-.main { display: grid; gap: 24px; min-width: 0; }
+/* Cartes : une ombre douce en clair, un filet en sombre */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; display: grid; gap: 14px; align-content: start; min-width: 0; box-shadow: var(--shadow); }
+.main { display: grid; gap: 20px; min-width: 0; container: dash / inline-size; }
+/* Grand écran : les cartes vont par deux (corpulence | eau, objectif | journal), le graphique sur toute la largeur. */
+@container page (min-width: 820px) {
+  .main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .main > .stats, #chartPanel, .main > .foot { grid-column: 1 / -1; }
+  #logPanel { order: 1; }
+  #chartPanel { order: 2; }
+  .main > .foot { order: 3; }
+}
+h3 { font-family: var(--f-display); font-size: 1rem; margin: 0; text-wrap: balance; }
+.sub-head { padding-top: 14px; border-top: 1px solid var(--line); }
+.head-end { display: inline-flex; align-items: center; gap: 10px; }
+button.link-more { background: none; border: none; padding: 2px 0; color: var(--accent); font-size: 0.82rem; font-weight: 700; white-space: nowrap; }
+button.link-more:hover { text-decoration: underline; filter: none; }
+/* Bouton du profil et sa fenêtre (les styles .sheet-bg / .sheet viennent de details.js) */
+/* La personne affichée porte un crayon : la toucher ouvre son profil. */
+.chip .edit { margin-left: -2px; opacity: 0.85; }
+/* Téléphone : personnes et boutons sur une seule ligne qu'on fait défiler du doigt */
+@media (max-width: 600px) {
+  .people { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -16px; padding: 2px 16px 4px; }
+  .people::-webkit-scrollbar { display: none; }
+  .people > *, .chips > * { flex: none; }
+  .chips { flex-wrap: nowrap; }
+}
+.profile-sheet { width: min(520px, 100%); box-shadow: 0 20px 50px color-mix(in srgb, var(--ink) 30%, transparent); }
+.profile-sheet .sheet-head { align-items: center; }
+.banner { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 
+/* Formulaires */
 form { display: grid; gap: 12px; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+label { display: grid; gap: 5px; font-size: 0.74rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700; min-width: 0; }
 input, select {
-  font: inherit; font-size: 16px; color: var(--ink); /* 16px : évite le zoom auto de l'iPhone */ background: var(--bg);
-  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0;
-  text-transform: none; letter-spacing: 0;
+  font: inherit; font-size: 16px; color: var(--ink); /* 16px : évite le zoom auto de l'iPhone */ background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; width: 100%; min-width: 0;
+  text-transform: none; letter-spacing: 0; transition: border-color .15s, background .15s;
 }
+input:hover, select:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+input:focus { background: var(--surface); }
 input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Les champs restent dans leur colonne ; sur iPhone, le champ date de Safari est plus large par défaut. */
-label { min-width: 0; }
 @supports (-webkit-touch-callout: none) {
-  input[type="date"] { -webkit-appearance: none; appearance: none; min-height: 2.6em; display: block; }
+  input[type="date"] { -webkit-appearance: none; appearance: none; min-height: 2.7em; display: block; }
   input::-webkit-date-and-time-value { text-align: left; }
 }
 button {
-  font: inherit; font-weight: 700; cursor: pointer; border-radius: 8px; padding: 9px 14px;
-  border: 1px solid var(--accent); background: var(--accent); color: var(--surface);
+  font: inherit; font-weight: 700; cursor: pointer; border-radius: 10px; padding: 9px 15px;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--on-accent);
+  transition: filter .15s, background .15s, transform .1s;
 }
+button:hover { filter: brightness(1.08); }
+button:active { transform: translateY(1px); }
 button.ghost { background: transparent; color: var(--accent); }
+button.ghost:hover { background: var(--accent-soft); filter: none; }
 button.icon { background: transparent; border: none; color: var(--muted); padding: 4px 8px; font-weight: 400; }
-button.icon:hover { color: var(--bad); }
+button.icon:hover { color: var(--bad); filter: none; }
+aside h2 { font-size: 1.15rem; }
+aside form > h2 { margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
 
-/* Chiffres clés */
-.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 12px; }
-.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 2px; align-content: start; }
-.stat .k { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 700; }
-.stat .v { font-family: var(--f-data); font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.stat .v small { font-size: 0.8rem; color: var(--muted); font-weight: 400; margin-left: 3px; }
-.stat .n { font-size: 0.82rem; color: var(--muted); }
-.tag { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; margin-top: 4px; justify-self: start; }
+/* Chiffres clés : le poids actuel en tête, plus grand */
+/* 7 cases : le poids actuel (2 places) + 6, soit 2 lignes pleines de 4, ou 4 lignes de 2 sur téléphone. */
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@container dash (min-width: 600px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 2px; align-content: start; box-shadow: var(--shadow); }
+.stat .k { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; }
+.stat .v { font-family: var(--f-data); font-size: 1.45rem; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.stat .v small { font-size: 0.78rem; color: var(--muted); font-weight: 400; margin-left: 3px; letter-spacing: 0; }
+.stat .n { font-size: 0.8rem; color: var(--muted); }
+.stats .stat:first-child {
+  grid-column: span 2; align-content: center; gap: 6px; padding: 18px 22px;
+  background: linear-gradient(140deg, var(--accent), color-mix(in srgb, var(--accent) 72%, var(--water)));
+  border-color: transparent; color: var(--on-accent);
+}
+.stats .stat:first-child .k, .stats .stat:first-child .n, .stats .stat:first-child .v small { color: color-mix(in srgb, var(--on-accent) 78%, transparent); }
+.stats .stat:first-child .v { font-size: 2.6rem; line-height: 1; }
+.stats .stat:first-child .more { color: var(--on-accent) !important; }
+.tag { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; margin-top: 4px; justify-self: start; }
 .tag.good { color: var(--good); background: color-mix(in srgb, var(--good) 14%, transparent); }
 .tag.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
 .tag.bad { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
 
 /* Échelle IMC */
-.scale { position: relative; height: 10px; border-radius: 5px; overflow: hidden; display: flex; }
+.scale { position: relative; height: 12px; border-radius: 6px; overflow: hidden; display: flex; gap: 2px; }
 .scale i { display: block; height: 100%; }
-.scale-wrap { position: relative; padding-top: 18px; }
-.marker { position: absolute; top: 0; transform: translateX(-50%); font-family: var(--f-data); font-size: 0.75rem; font-weight: 600; }
-.marker::after { content: ""; display: block; width: 2px; height: 22px; background: var(--ink); margin: 1px auto 0; }
-.scale-labels { display: flex; justify-content: space-between; font-family: var(--f-data); font-size: 0.7rem; color: var(--muted); margin-top: 4px; }
+.scale-wrap { position: relative; padding-top: 22px; }
+.marker { position: absolute; top: 0; transform: translateX(-50%); font-family: var(--f-data); font-size: 0.75rem; font-weight: 600; background: var(--ink); color: var(--surface); padding: 0 6px; border-radius: 6px; }
+.marker::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 20px; margin-left: -1px; background: var(--ink); }
+.scale-labels { display: flex; justify-content: space-between; font-family: var(--f-data); font-size: 0.7rem; color: var(--muted); margin-top: 6px; }
 
 /* Objectif */
-.goal-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 16px; }
-.bar { height: 14px; border-radius: 7px; background: var(--accent-soft); overflow: hidden; }
-.bar > div { height: 100%; background: var(--accent); border-radius: 7px; transition: width .5s ease; }
-.goal-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 18px; }
-.goal-facts div { display: grid; }
-.goal-facts b { font-family: var(--f-data); font-size: 1.1rem; font-variant-numeric: tabular-nums; }
-.goal-facts span { font-size: 0.8rem; color: var(--muted); }
-.advice { font-size: 0.9rem; margin: 0; padding-left: 12px; border-left: 3px solid var(--accent); color: var(--ink); }
-.advice.warn { border-color: var(--warn); }
+.goal-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 16px; }
+.bar { height: 12px; border-radius: 6px; background: var(--accent-soft); overflow: hidden; }
+.bar > div { height: 100%; background: var(--accent); border-radius: 6px; transition: width .5s ease; }
+.goal-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px 18px; }
+.goal-facts div { display: grid; padding-left: 10px; border-left: 2px solid var(--line); }
+.goal-facts b { font-family: var(--f-data); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.goal-facts span { font-size: 0.78rem; color: var(--muted); }
+.advice { font-size: 0.9rem; margin: 0; padding: 10px 14px; border-radius: 10px; background: var(--accent-soft); color: var(--ink); }
+.advice.warn { background: color-mix(in srgb, var(--warn) 12%, var(--surface)); }
 
 /* Tour de taille et eau */
 .inline-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
 .verdict { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .verdict .tag { margin-top: 0; font-size: 0.85rem; padding: 3px 10px; }
-.water-now { font-family: var(--f-data); font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-.water-now small { font-size: 0.85rem; color: var(--muted); font-weight: 400; }
+#waterPanel { --accent: var(--water); --accent-soft: var(--water-soft); }
+.water-now { font-family: var(--f-data); font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.water-now small { font-size: 0.82rem; color: var(--muted); font-weight: 400; letter-spacing: 0; }
 .water-btns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .water-btns button { padding-inline: 2px; white-space: nowrap; }
+.water-btns button:not(.ghost) { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.water-btns button:not(.ghost):hover { background: var(--accent); color: var(--on-accent); filter: none; }
 .water-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
-.water-days div { display: grid; gap: 3px; justify-items: stretch; text-align: center; font-family: var(--f-data); font-size: 0.7rem; color: var(--muted); }
-.water-days .col { height: 48px; display: flex; align-items: flex-end; background: var(--accent-soft); border-radius: 5px; overflow: hidden; }
-.water-days .col i { display: block; width: 100%; background: var(--accent); }
+.water-days div { display: grid; gap: 4px; justify-items: stretch; text-align: center; font-family: var(--f-data); font-size: 0.68rem; color: var(--muted); }
+.water-days .col { height: 52px; display: flex; align-items: flex-end; background: var(--accent-soft); border-radius: 6px; overflow: hidden; }
+.water-days .col i { display: block; width: 100%; background: var(--accent); border-radius: 6px 6px 0 0; }
 
 /* Graphique */
 .chart-box { overflow-x: auto; }
 svg.chart { width: 100%; min-width: 520px; height: auto; display: block; }
 svg.chart text { font-family: var(--f-data); font-size: 11px; fill: var(--muted); }
-.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.8rem; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.78rem; color: var(--muted); }
 .legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
 
 /* Journal */
 .log-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
 @media (max-width: 480px) { .log-form { grid-template-columns: 1fr 1fr; } .log-form button { grid-column: span 2; } }
-.table-box { overflow-x: auto; max-height: 320px; overflow-y: auto; }
+.table-box { overflow-x: auto; max-height: 340px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); position: sticky; top: 0; background: var(--surface); }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--surface-2); }
+th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); position: sticky; top: 0; background: var(--surface-2); }
 td.num { font-family: var(--f-data); }
 .up { color: var(--bad); } .down { color: var(--good); }
-.empty { color: var(--muted); font-size: 0.92rem; }
-.foot { color: var(--muted); font-size: 0.8rem; max-width: 70ch; }
+.empty { color: var(--muted); font-size: 0.9rem; }
+.foot { color: var(--muted); font-size: 0.78rem; max-width: 72ch; margin: 4px 0 0; }
 .err { color: var(--bad); font-size: 0.85rem; min-height: 1em; margin: 0; }
-@media (prefers-reduced-motion: reduce) { .bar > div { transition: none; } }
+.err:empty { display: none; }
+@media (prefers-reduced-motion: reduce) { .bar > div, button, input, select { transition: none; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div>
-      <h1>Balance <span>&amp;</span> Cap</h1>
-      <p class="sub">Vos mesures, vos statistiques et la route vers votre poids objectif.</p>
+    <div class="brand">
+      <span class="logo" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 5v21M9 26h14M6 10h20"/>
+          <path d="M6 10l-4 9h8zM26 10l-4 9h8z"/>
+          <circle cx="16" cy="5" r="1.6" fill="currentColor" stroke="none"/>
+        </svg>
+      </span>
+      <div>
+        <h1>Balance <span>&amp;</span> Cap</h1>
+        <p class="sub">Vos mesures, vos statistiques et la route vers votre poids objectif.</p>
+      </div>
     </div>
     <span class="pill" id="saveState">Chargement…</span>
   </header>
 
   <div class="banner" id="exampleBanner" hidden>
-    Ce sont des <strong>données d'exemple</strong>. Remplissez votre profil et ajoutez votre première pesée : l'exemple disparaîtra.
+    <span>Ce sont des <strong>données d'exemple</strong>. Touchez le nom ci-dessous pour remplir votre profil, puis ajoutez votre première pesée : l'exemple disparaîtra.</span>
   </div>
 
+  <!-- Toucher une personne l'affiche ; toucher la personne déjà affichée ouvre son profil. -->
   <nav class="people" aria-label="Personnes suivies">
     <div class="chips" id="peopleChips"></div>
     <button type="button" class="ghost" id="addPerson">+ Ajouter une personne</button>
   </nav>
 
-  <div class="grid">
-    <aside class="panel">
-      <h2 id="profileTitle">Profil</h2>
+  <!-- Le profil s'ouvre dans une fenêtre par-dessus la page, depuis le bouton « Profil ». -->
+  <div class="sheet-bg" id="profileBg" hidden>
+    <aside class="panel sheet profile-sheet" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+      <div class="sheet-head">
+        <h2 id="profileTitle">Profil</h2>
+        <button type="button" class="close" id="profileClose" aria-label="Fermer">✕</button>
+      </div>
       <form id="profileForm">
         <label>Prénom<input id="pName" type="text" autocomplete="given-name" placeholder="Votre prénom"></label>
         <div class="row2">
@@ -223,21 +317,27 @@ td.num { font-family: var(--f-data); }
         <button type="button" class="ghost danger" id="delPerson">Supprimer cette personne</button>
       </form>
     </aside>
+  </div>
 
+  <div class="grid">
     <div class="main">
       <section class="stats" id="stats" aria-label="Statistiques"></section>
 
-      <section class="panel" aria-labelledby="imcTitle">
-        <h2 id="imcTitle">Où se situe votre IMC</h2>
+      <!-- Corpulence : l'IMC et le tour de taille se lisent ensemble, dans une seule carte. -->
+      <section class="panel" id="bodyPanel" aria-labelledby="imcTitle">
+        <div class="goal-head">
+          <h2 id="imcTitle">Corpulence</h2>
+          <button type="button" class="link-more" data-open-sheet="1">Comprendre l'IMC ›</button>
+        </div>
         <div class="scale-wrap">
           <div class="marker" id="bmiMarker"></div>
           <div class="scale" id="bmiScale"></div>
           <div class="scale-labels"><span>15</span><span>18,5</span><span>25</span><span>30</span><span>35</span><span>40</span></div>
         </div>
-      </section>
-
-      <section class="panel" aria-labelledby="waistTitle">
-        <h2 id="waistTitle">Tour de taille : êtes-vous vraiment en obésité ?</h2>
+        <div class="goal-head sub-head">
+          <h3 id="waistTitle">Tour de taille</h3>
+          <button type="button" class="link-more" data-open-sheet="8">Conseils ›</button>
+        </div>
         <form class="inline-form" id="waistForm">
           <label>Tour de taille (cm)<input id="wWaist" type="number" min="40" max="250" step="0.5" required></label>
           <button type="submit">Calculer</button>
@@ -248,10 +348,10 @@ td.num { font-family: var(--f-data); }
         <p class="advice" id="waistAdvice"></p>
       </section>
 
-      <section class="panel" aria-labelledby="waterTitle">
+      <section class="panel" id="waterPanel" aria-labelledby="waterTitle">
         <div class="goal-head">
           <h2 id="waterTitle">Eau bue aujourd'hui</h2>
-          <span class="pill" id="waterPct">0 %</span>
+          <span class="head-end"><button type="button" class="link-more" data-open-sheet="6">Conseils ›</button><span class="pill" id="waterPct">0 %</span></span>
         </div>
         <div class="water-now" id="waterNow"></div>
         <div class="bar"><div id="waterBar" style="width:0"></div></div>
@@ -269,7 +369,7 @@ td.num { font-family: var(--f-data); }
         <div class="water-days" id="waterDays" role="img" aria-label="Eau bue sur les 7 derniers jours"></div>
       </section>
 
-      <section class="panel" aria-labelledby="goalTitle">
+      <section class="panel" id="goalPanel" aria-labelledby="goalTitle">
         <div class="goal-head">
           <h2 id="goalTitle">Progression vers l'objectif</h2>
           <span class="pill" id="goalPct">0 %</span>
@@ -279,7 +379,7 @@ td.num { font-family: var(--f-data); }
         <p class="advice" id="goalAdvice"></p>
       </section>
 
-      <section class="panel" aria-labelledby="chartTitle">
+      <section class="panel" id="chartPanel" aria-labelledby="chartTitle">
         <h2 id="chartTitle">Évolution du poids</h2>
         <div class="chart-box"><svg class="chart" id="chart" viewBox="0 0 680 280" role="img" aria-label="Courbe du poids"></svg></div>
         <div class="legend">
@@ -290,7 +390,7 @@ td.num { font-family: var(--f-data); }
         </div>
       </section>
 
-      <section class="panel" aria-labelledby="logTitle">
+      <section class="panel" id="logPanel" aria-labelledby="logTitle">
         <h2 id="logTitle">Journal des pesées</h2>
         <form class="log-form" id="logForm">
           <label>Date<input id="lDate" type="date" required></label>
@@ -482,8 +582,9 @@ function bmiClass(b) {
 }
 
 /* ---------- Rendu ---------- */
-function stat(k, v, unit, note, tag) {
-  return `<div class="stat"><span class="k">${k}</span><span class="v">${v}<small>${unit}</small></span>${note ? `<span class="n">${note}</span>` : ""}${tag ? `<span class="tag ${tag[1]}">${tag[0]}</span>` : ""}</div>`;
+// `sheet` : numéro de la fiche détaillée (details.js) que la case ouvre.
+function stat(sheet, k, v, unit, note, tag) {
+  return `<div class="stat" data-sheet="${sheet}"><span class="k">${k}</span><span class="v">${v}<small>${unit}</small></span>${note ? `<span class="n">${note}</span>` : ""}${tag ? `<span class="tag ${tag[1]}">${tag[0]}</span>` : ""}</div>`;
 }
 
 function render() {
@@ -494,15 +595,14 @@ function render() {
   const [cls, tone] = bmiClass(c.bmi);
   const minSafe = p.sex === "h" ? 1500 : 1200;
   $("stats").innerHTML = [
-    stat("Poids actuel", fmt(c.w), "kg", c.entries.length > 1 ? `${c.w - c.start <= 0 ? "" : "+"}${fmt(c.w - c.start)} kg depuis le début` : "Première mesure"),
-    stat("IMC", fmt(c.bmi), "", `${p.height} cm, ${p.age} ans`, [cls, tone]),
-    stat("Poids santé", `${fmt(c.idealMin, 0)}–${fmt(c.idealMax, 0)}`, "kg", "IMC entre 18,5 et 24,9"),
-    stat("Masse grasse est.", fmt(Math.max(3, c.fat)), "%", p.sex === "h" ? "Repère : 10 à 20 %" : "Repère : 18 à 28 %"),
-    stat("Métabolisme de base", fmt(c.bmr, 0), "kcal", "Dépense au repos sur 24 h"),
-    stat("Dépense journalière", fmt(c.tdee, 0), "kcal", "Avec votre niveau d'activité"),
-    stat("Eau conseillée", fmt(c.water), "L/jour", "35 ml par kg"),
-    stat("Protéines", fmt(c.protein, 0), "g/jour", c.losing ? "1,6 g/kg pour garder le muscle" : "1,2 g/kg"),
-    c.waist ? stat("Tour de taille", fmt(c.waist, c.waist % 1 ? 1 : 0), "cm", `Rapport taille : ${fmt(c.wht, 2)}`, [waistVerdict(c, p).label, waistVerdict(c, p).tone]) : stat("Tour de taille", "—", "", "À renseigner ci-dessous"),
+    // L'eau conseillée et le tour de taille ont leur propre bloc plus bas : pas de case en double ici.
+    stat(0, "Poids actuel", fmt(c.w), "kg", c.entries.length > 1 ? `${c.w - c.start <= 0 ? "" : "+"}${fmt(c.w - c.start)} kg depuis le début` : "Première mesure"),
+    stat(1, "IMC", fmt(c.bmi), "", `${p.height} cm, ${p.age} ans`, [cls, tone]),
+    stat(2, "Poids santé", `${fmt(c.idealMin, 0)}–${fmt(c.idealMax, 0)}`, "kg", "IMC entre 18,5 et 24,9"),
+    stat(3, "Masse grasse est.", fmt(Math.max(3, c.fat)), "%", p.sex === "h" ? "Repère : 10 à 20 %" : "Repère : 18 à 28 %"),
+    stat(4, "Métabolisme de base", fmt(c.bmr, 0), "kcal", "Dépense au repos sur 24 h"),
+    stat(5, "Dépense journalière", fmt(c.tdee, 0), "kcal", "Avec votre niveau d'activité"),
+    stat(7, "Protéines", fmt(c.protein, 0), "g/jour", c.losing ? "1,6 g/kg pour garder le muscle" : "1,2 g/kg"),
   ].join("");
 
   // Échelle IMC (15 → 40)
@@ -677,13 +777,36 @@ function renderPeople() {
   $("peopleChips").innerHTML = book.people.map((p) => {
     const last = [...p.entries].sort((a, b) => a.d.localeCompare(b.d)).at(-1);
     const w = last ? last.w : p.profile.weight;
-    return `<button type="button" class="chip" data-person="${esc(p.id)}" aria-pressed="${p.id === state.id && !creating}"><span class="ini">${esc(nameOf(p).charAt(0).toUpperCase())}</span>${esc(nameOf(p))}<span class="w">${fmt(w)} kg</span></button>`;
+    const current = p.id === state.id && !creating;
+    const label = current ? `Ouvrir le profil de ${nameOf(p)}` : `Afficher ${nameOf(p)}`;
+    return `<button type="button" class="chip" data-person="${esc(p.id)}" aria-pressed="${current}" title="${esc(label)}" aria-label="${esc(label)}"><span class="ini">${esc(nameOf(p).charAt(0).toUpperCase())}</span>${esc(nameOf(p))}<span class="w">${fmt(w)} kg</span>${current ? ICON_EDIT : ""}</button>`;
   }).join("");
   $("profileTitle").textContent = creating ? "Nouvelle personne" : `Profil de ${nameOf(state)}`;
   $("saveProfile").textContent = creating ? "Créer la personne" : "Enregistrer le profil";
   $("cancelNew").hidden = !creating;
   $("delPerson").hidden = creating || book.example;
 }
+
+/* ---------- Fenêtre du profil ---------- */
+const ICON_EDIT = `<svg class="edit" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg>`;
+let profileOpener = null;
+function openProfile() {
+  profileOpener = document.activeElement;
+  $("profileBg").hidden = false;
+  document.documentElement.style.overflow = "hidden";
+  (creating ? $("pName") : $("profileClose")).focus();
+}
+// Fermer pendant la création d'une personne revient à l'annuler.
+function closeProfile() {
+  if ($("profileBg").hidden) return;
+  $("profileBg").hidden = true;
+  document.documentElement.style.overflow = "";
+  if (creating) { creating = false; fillForm(); render(); }
+  if (profileOpener && document.contains(profileOpener)) profileOpener.focus();
+}
+$("profileClose").addEventListener("click", closeProfile);
+$("profileBg").addEventListener("click", (ev) => { if (ev.target === $("profileBg")) closeProfile(); });
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeProfile(); });
 
 /* ---------- Formulaires ---------- */
 function fillForm() {
@@ -728,6 +851,7 @@ $("profileForm").addEventListener("submit", (ev) => {
   }
   persist();
   render();
+  closeProfile();
 });
 
 $("logForm").addEventListener("submit", (ev) => {
@@ -792,6 +916,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) rend
 $("peopleChips").addEventListener("click", (ev) => {
   const chip = ev.target.closest("[data-person]");
   if (!chip) return;
+  if (chip.dataset.person === state.id && !creating) { openProfile(); return; }
   creating = false;
   selectPerson(chip.dataset.person);
   $("profileErr").textContent = ""; $("logErr").textContent = "";
@@ -806,14 +931,10 @@ $("addPerson").addEventListener("click", () => {
   $("pActivity").value = "1.375";
   $("profileErr").textContent = "";
   renderPeople();
-  $("pName").focus();
+  openProfile();
 });
 
-$("cancelNew").addEventListener("click", () => {
-  creating = false;
-  fillForm();
-  render();
-});
+$("cancelNew").addEventListener("click", closeProfile);
 
 let delTimer = null;
 $("delPerson").addEventListener("click", () => {
@@ -842,6 +963,7 @@ $("delPerson").addEventListener("click", () => {
   }
   fillForm();
   render();
+  closeProfile();
 });
 
 $("lDate").value = todayISO();
