@@ -119,7 +119,7 @@
   window.persist = function () { localPersist(); push(); };
 
   function apply(data) {
-    book = { example: false, current: data.current, people: data.people.map((p) => ({ id: p.id, profile: p.profile, entries: Array.isArray(p.entries) ? p.entries.slice() : [] })) };
+    book = { example: false, current: data.current, people: data.people.map((p) => ({ id: p.id, profile: p.profile, entries: Array.isArray(p.entries) ? p.entries.slice() : [], water: Array.isArray(p.water) ? p.water.slice() : [] })) };
     selectPerson(data.current);
     creating = false;
     fillForm();
