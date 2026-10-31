@@ -27,7 +27,7 @@
 .glass-actions button { flex: 1 1 auto; }
 .glass-cam { position: relative; margin: 0 auto; max-width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
 .glass-cam video { display: block; width: 100%; height: 100%; object-fit: fill; }
-.glass-frame { position: absolute; left: 22%; right: 22%; top: 8%; bottom: 8%; border: 3px dashed rgba(255,255,255,0.9); border-radius: 18px 18px 28px 28px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35); pointer-events: none; }
+.glass-frame { position: absolute; left: 20%; right: 20%; top: 8%; bottom: 8%; border: 3px dashed rgba(255,255,255,0.9); border-radius: 18px 18px 28px 28px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35); pointer-events: none; }
 .glass-shoot { display: flex; justify-content: center; }
 .glass-shoot button { width: 68px; height: 68px; border-radius: 50%; padding: 0; border: 4px solid var(--surface); box-shadow: 0 0 0 3px var(--accent); font-size: 0; }
 `;
@@ -52,8 +52,13 @@
     : "Verre standard (environ 7,5 cm de large)";
 
   const MAX_SIDE = 1200; // la photo est réduite : plus rapide et suffisant pour la mesure
-  // Cadre du viseur, en fraction de l'image : le verre doit y tenir.
-  const FRAME = { l: 0.22, r: 0.78, t: 0.08, b: 0.92 };
+  // Cadre du viseur, en fraction de l'image : un verre à eau courant, 1,5 fois plus haut que large.
+  const fitFrame = (vw, vh) => {
+    let fw = 0.6 * vw, fh = fw * 1.5;
+    if (fh > 0.84 * vh) { fh = 0.84 * vh; fw = fh / 1.5; }
+    return { l: (vw - fw) / 2 / vw, r: (vw + fw) / 2 / vw, t: (vh - fh) / 2 / vh, b: (vh + fh) / 2 / vh };
+  };
+  let FRAME = fitFrame(3, 4);
   let bg = null, img = null, pts = null, found = null, drag = null, editing = false, shot = null, stream = null;
 
   /* ---------- Fenêtre ---------- */
@@ -128,7 +133,7 @@
           <video id="glassVideo" playsinline muted autoplay></video>
           <div class="glass-frame"></div>
         </div>
-        <p class="note" style="margin:0;text-align:center">Placez le verre <b>dans le cadre</b>, de profil, le téléphone à la hauteur de l'eau.</p>
+        <p class="note" style="margin:0;text-align:center">Approchez-vous jusqu'à ce que le verre <b>remplisse le cadre</b> : ses bords contre les pointillés, de profil, le téléphone à la hauteur de l'eau.</p>
         <div class="glass-shoot"><button type="button" id="glassShoot" aria-label="Prendre la photo">Prendre la photo</button></div>
         <button type="button" class="ghost" id="glassFromFile">Choisir une photo existante</button>
       </div>`;
@@ -140,6 +145,9 @@
       const cam = $("glassCam");
       cam.style.aspectRatio = String(ar);
       cam.style.width = `min(100%, calc(55vh * ${ar}))`;
+      FRAME = fitFrame(video.videoWidth, video.videoHeight);
+      const f = cam.querySelector(".glass-frame"), pc = (v) => `${(v * 100).toFixed(1)}%`;
+      f.style.left = pc(FRAME.l); f.style.right = pc(1 - FRAME.r); f.style.top = pc(FRAME.t); f.style.bottom = pc(1 - FRAME.b);
     });
     video.play().catch(() => {});
     $("glassFromFile").addEventListener("click", askPhoto);
@@ -157,7 +165,8 @@
       stopCamera();
       // Zone de recherche : le cadre du viseur, ramené à la photo recadrée, avec une petite marge.
       const l = (FRAME.l - x0) / (x1 - x0), r = (FRAME.r - x0) / (x1 - x0);
-      analyze(cv, { x: 0.5, y: 0.5, l: l - 0.05, r: r + 0.05 });
+      const t = (FRAME.t - y0) / (y1 - y0), b = (FRAME.b - y0) / (y1 - y0);
+      analyze(cv, { x: 0.5, y: 0.5, l: l - 0.05, r: r + 0.05, frame: { l, r, t, b } });
     });
   }
 
@@ -229,16 +238,45 @@
     // Les deux côtés d'un même verre ont à peu près le même contraste.
     const fx = focus.x * w, zl = (focus.l ?? 0) * w, zr = (focus.r ?? 1) * w;
     let xl = Math.round(Math.max(1, fx - w * 0.15)), xr = Math.round(Math.min(w - 2, fx + w * 0.15)), bestPair = -1;
-    const top = peaks.filter((x) => x >= zl && x <= zr).slice(0, 16);
-    for (const p of top) for (const q of top) {
-      if (q - p < w * 0.08 || !(p < fx && fx < q)) continue;
-      const lo2 = Math.min(cs[p], cs[q]), hi2 = Math.max(cs[p], cs[q]);
-      const s = lo2 * Math.sqrt(lo2 / hi2) * (1 - 0.9 * Math.min(1, Math.abs((p + q) / 2 - fx) / ((zr - zl) * 0.5)));
-      if (s > bestPair) { bestPair = s; xl = p; xr = q; }
+    const fr = focus.frame; // photo du viseur : le verre remplit le cadre, ses bords sont près des pointillés
+    if (fr) {
+      // Une paroi de verre descend sur toute la hauteur du cadre ; un meuble derrière s'arrête souvent à la table.
+      // On ne garde qu'un bord présent sur presque toute la hauteur, proche des pointillés ; sinon le bord du cadre.
+      const fl = fr.l * w, frr = fr.r * w, half = (frr - fl) / 2;
+      const ft = Math.round(fr.t * h), fb = Math.round(fr.b * h);
+      const cover = (x) => {
+        let on = 0;
+        for (let y = ft; y < fb; y++) {
+          const i = y * w + x;
+          if (Math.max(gx[i - 1], gx[i], gx[i + 1]) > 10) on++;
+        }
+        return on / Math.max(1, fb - ft);
+      };
+      const near = (target) => {
+        let bx = Math.round(target), bv = 0;
+        const a = Math.max(2, Math.round(target - half * 0.15)), b = Math.min(w - 3, Math.round(target + half * 0.15));
+        for (let x = a; x <= b; x++) {
+          const c = cover(x);
+          if (c < 0.8) continue;
+          const v = c * (1 - 0.5 * Math.abs(x - target) / (half * 0.15));
+          if (v > bv) { bv = v; bx = x; }
+        }
+        return bx;
+      };
+      xl = near(fl);
+      xr = near(frr);
+    } else {
+      const top = peaks.filter((x) => x >= zl && x <= zr).slice(0, 16);
+      for (const p of top) for (const q of top) {
+        if (q - p < w * 0.08 || !(p < fx && fx < q)) continue;
+        const lo2 = Math.min(cs[p], cs[q]), hi2 = Math.max(cs[p], cs[q]);
+        const s = lo2 * Math.sqrt(lo2 / hi2) * (1 - 0.9 * Math.min(1, Math.abs((p + q) / 2 - fx) / ((zr - zl) * 0.5)));
+        if (s > bestPair) { bestPair = s; xl = p; xr = q; }
+      }
     }
 
     // 2. Suivi des bords et droites
-    const reach = Math.round(w * 0.08);
+    const reach = Math.round(w * (fr ? 0.04 : 0.08)); // avec le cadre, on reste près du bord trouvé
     const track = (x0) => {
       const ex = new Array(h).fill(x0), es = new Array(h).fill(0);
       for (let y = 1; y < h - 1; y++) {
@@ -261,7 +299,13 @@
       if (yb - yt < y - runStart) { yt = runStart; yb = y; }
     }
     let sidesOk = yt >= 0 && yb - yt >= h * 0.15;
-    if (!sidesOk) { yt = Math.round(h * 0.2); yb = Math.round(h * 0.85); }
+    if (fr) {
+      // Haut et fond du verre près du haut et du bas du cadre ; sinon on prend le cadre lui-même.
+      const ft = fr.t * h, fb = fr.b * h, fh = fb - ft;
+      if (!sidesOk || yt < ft - fh * 0.1 || yt > ft + fh * 0.12) yt = Math.round(ft);
+      if (!sidesOk || yb > fb + fh * 0.1 || yb < fb - fh * 0.12) yb = Math.round(fb);
+      sidesOk = true;
+    } else if (!sidesOk) { yt = Math.round(h * 0.2); yb = Math.round(h * 0.85); }
     const fit = (T) => {
       let use = [];
       for (let y = yt; y <= yb; y++) if (T.es[y] > thr * 0.5) use.push(y);
@@ -286,16 +330,23 @@
     // 3. Niveau de l'eau. On compare l'intérieur du verre au décor juste à côté : un changement visible des deux
     // côtés (bord de table, mur…) vient du fond, pas de l'eau, et s'annule dans la différence.
     const span = yb - yt;
+    // La surface de l'eau est une ligne qui traverse tout le verre : on compte la part des colonnes
+    // où la ligne est nette (une tache ou un reflet n'en couvre qu'une partie).
+    const LINE = 14;
     const avg = (y, a, b) => {
       a = Math.max(1, Math.round(a)); b = Math.min(w - 2, Math.round(b));
-      let sr = 0, sg = 0, sb = 0, se = 0, c = 0;
-      for (let x = a; x <= b; x++) { const i = y * w + x; sr += R[i]; sg += G[i]; sb += B[i]; se += gy[i]; c++; }
-      return c ? [sr / c, sg / c, sb / c, se / c, c] : null;
+      let sr = 0, sg = 0, sb = 0, sl = 0, c = 0;
+      for (let x = a; x <= b; x++) {
+        const i = y * w + x;
+        sr += R[i]; sg += G[i]; sb += B[i]; c++;
+        if (Math.max(gy[i], gy[i - w] || 0, gy[i + w] || 0) > LINE) sl++;
+      }
+      return c ? [sr / c, sg / c, sb / c, sl / c, c] : null;
     };
     const rows = [];
     for (let y = yt; y <= yb; y++) {
       const l = xAt(LL, y), r = xAt(LR, y), wid = r - l;
-      const inside = avg(y, l + wid * 0.18, r - wid * 0.18) || [0, 0, 0, 0];
+      const inside = avg(y, l + wid * 0.1, r - wid * 0.1) || [0, 0, 0, 0];
       const left = avg(y, l - wid * 0.3, l - wid * 0.08), right = avg(y, r + wid * 0.08, r + wid * 0.3);
       const outs = [left, right].filter(Boolean);
       const out = outs.length ? [0, 1, 2, 3].map((j) => outs.reduce((s, o) => s + o[j], 0) / outs.length) : [0, 0, 0, 0];
@@ -308,7 +359,7 @@
       return s.map((v) => v / Math.max(1, c));
     };
     // On ignore le haut du verre : l'ellipse du bord y fait un contraste qui n'est pas de l'eau.
-    const lo = Math.max(1, Math.round(span * 0.09)), hi = Math.min(rows.length - 2, Math.round(span * 0.97));
+    const lo = Math.max(1, Math.round(span * (fr ? 0.13 : 0.09))), hi = Math.min(rows.length - 2, Math.round(span * 0.97));
     const steps = [], edges = [];
     for (let i = lo; i <= hi; i++) {
       const u = meanOf(Math.max(lo - 2, i - k), i - 1), v = meanOf(i + 1, i + k);
@@ -316,7 +367,7 @@
       edges.push((rows[i - 1][3] + rows[i][3] + rows[i + 1][3]) / 3);
     }
     const maxS = Math.max(1, ...steps), maxE = Math.max(1, ...edges);
-    const score = steps.map((s, j) => 0.65 * s / maxS + 0.35 * edges[j] / maxE);
+    const score = steps.map((s, j) => 0.45 * s / maxS + 0.55 * edges[j] / maxE);
     // Changements nets, du plus fort au plus faible, assez éloignés les uns des autres
     const cands = [];
     score.forEach((s, j) => { if (s >= (score[j - 1] ?? 0) && s >= (score[j + 1] ?? 0)) cands.push(j); });
@@ -324,11 +375,13 @@
     const picks = [];
     for (const j of cands) { if (picks.every((p) => Math.abs(p - j) > k)) picks.push(j); if (picks.length === 3) break; }
     const MIN_STEP = 7; // en dessous, l'intérieur du verre ne change pas vraiment de couleur
+    // Un vrai niveau : un net changement de couleur, ou une ligne nette sur au moins la moitié de la largeur.
+    const strong = (j) => steps[j] >= MIN_STEP || edges[j] >= 0.5;
     // Le fond épais du verre fait aussi un changement net, tout en bas : c'est le fond intérieur, pas l'eau.
     let ib = yb;
-    const low = picks.filter((j) => yt + lo + j > yb - span * 0.13 && steps[j] >= MIN_STEP).sort((p, q) => q - p)[0];
+    const low = picks.filter((j) => yt + lo + j > yb - span * 0.13 && strong(j)).sort((p, q) => q - p)[0];
     if (low != null) ib = yt + lo + low;
-    const water = picks.filter((j) => yt + lo + j < ib - k && steps[j] >= MIN_STEP).sort((p, q) => score[q] - score[p])[0];
+    const water = picks.filter((j) => yt + lo + j < ib - k && strong(j)).sort((p, q) => score[q] - score[p])[0];
     const empty = water == null;
     let yw = empty ? ib : yt + lo + water;
     // Vue un peu d'en haut, la surface de l'eau est une ellipse : le vrai niveau est au milieu de ses deux bords.
@@ -340,8 +393,8 @@
     }
     const contrast = empty ? 0 : steps[water], noise = median(steps);
 
-    // Confiance : un changement net au niveau de l'eau et deux bords bien droits.
-    let conf = clamp((contrast - 1.5 * noise) / 18, 0, 1) * (sidesOk ? 1 : 0.4);
+    // Confiance : un changement net (ou une ligne qui traverse le verre) au niveau de l'eau, et deux bords bien droits.
+    let conf = Math.max(clamp((contrast - 1.5 * noise) / 18, 0, 1), empty ? 0 : clamp((edges[water] - 0.3) / 0.4, 0, 1)) * (sidesOk ? 1 : 0.4);
     if (Math.abs(LL.b) > 0.4 || Math.abs(LR.b) > 0.4) conf *= 0.5; // bords trop penchés : sans doute pas un verre
 
     const s = src.width / w;
@@ -410,7 +463,7 @@
             ${["tl", "tr", "bl", "br", "water"].map((k) => `<g class="h" data-h="${k}"><circle r="${r * 2.4}" fill="transparent"/><circle r="${r}" fill="${k === "water" ? "#3b82f6" : "#0d6b62"}" stroke="#ffffff" stroke-width="${r * 0.3}"/></g>`).join("")}
           </svg>
         </div>
-        <p class="note" id="glassTapHint" style="margin:0">Le repère n'est pas sur le verre ? <b>Touchez le verre sur la photo</b> pour relancer la mesure à cet endroit.</p>
+        <p class="note" id="glassTapHint" style="margin:0">Ligne bleue mal placée ? <b>Touchez la surface de l'eau</b> sur la photo. Contour vert à côté du verre ? <b>Touchez le verre</b> en dehors du contour.</p>
         <p class="note" id="glassHint" style="margin:0" hidden>Faites glisser les points <b>sur les bords intérieurs</b> du verre (haut et fond), puis la ligne bleue <b>sur la surface de l'eau</b>.</p>
         <div class="glass-refline" id="glassRefLine"><span id="glassRefTxt"></span><button type="button" class="ghost" id="glassRefEdit">Changer de verre</button></div>
         <div class="glass-ref" id="glassRef" hidden>
@@ -491,10 +544,13 @@
     const stop = () => { drag = null; };
     svg.addEventListener("pointerup", stop);
     svg.addEventListener("pointercancel", stop);
-    // Toucher la photo vise le verre à cet endroit et relance la mesure.
+    // Toucher dans le verre place la ligne bleue à cet endroit ; toucher à côté vise le verre et relance la mesure.
     svg.addEventListener("click", (ev) => {
       if (editing) return;
       const p = toSvg(ev);
+      const t = (p.y - pts.tl.y) / (pts.bl.y - pts.tl.y);
+      const inGlass = t >= 0 && t <= 1 && p.x >= pts.tl.x + (pts.bl.x - pts.tl.x) * t && p.x <= pts.tr.x + (pts.br.x - pts.tr.x) * t;
+      if (inGlass) { pts.water = p.y; found.manual = true; draw(); return; }
       const fx = p.x / img.w;
       found = detect(shot, { x: fx, y: p.y / img.h, l: fx - 0.35, r: fx + 0.35 });
       pts = found.pts;
@@ -549,7 +605,7 @@
     $("glassFill").textContent = m ? `Rempli à ${fmt(m.pct, 0)} %, verre plein : ${ref.mode === "std" ? "environ " : ""}${fmt(m.fullMl / 10, 0)} cl` : "";
     $("glassAdd").textContent = m ? `Ajouter ${fmt(Math.round(m.ml / 10), 0)} cl à l'eau bue` : "Ajouter à l'eau bue";
     const tag = $("glassConf");
-    if (editing) { tag.className = "tag good"; tag.textContent = "Corrigé à la main"; }
+    if (editing || found.manual) { tag.className = "tag good"; tag.textContent = "Corrigé à la main"; }
     else if (found.empty) { tag.className = "tag warn"; tag.textContent = "Niveau introuvable : vérifiez"; }
     else if (found.conf >= 0.6) { tag.className = "tag good"; tag.textContent = "Mesure fiable"; }
     else { tag.className = "tag warn"; tag.textContent = "À vérifier sur la photo"; }
