@@ -10,7 +10,7 @@
 .glass-stage svg { display: block; width: 100%; height: auto; max-height: 50vh; }
 .glass-stage .h { cursor: grab; }
 .glass-stage.locked .h { display: none; }
-.glass-stage.locked { touch-action: auto; }
+.glass-stage.locked { touch-action: auto; cursor: crosshair; }
 .glass-pick { display: grid; place-items: center; gap: 10px; text-align: center; padding: 28px 16px; border: 2px dashed var(--line); border-radius: 12px; color: var(--muted); cursor: pointer; }
 .glass-busy { text-align: center; color: var(--muted); padding: 28px 0; }
 .glass-ref { display: grid; gap: 8px; }
@@ -25,6 +25,11 @@
 .glass-result .tag { margin-top: 4px; }
 .glass-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .glass-actions button { flex: 1 1 auto; }
+.glass-cam { position: relative; margin: 0 auto; max-width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+.glass-cam video { display: block; width: 100%; height: 100%; object-fit: fill; }
+.glass-frame { position: absolute; left: 22%; right: 22%; top: 8%; bottom: 8%; border: 3px dashed rgba(255,255,255,0.9); border-radius: 18px 18px 28px 28px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35); pointer-events: none; }
+.glass-shoot { display: flex; justify-content: center; }
+.glass-shoot button { width: 68px; height: 68px; border-radius: 50%; padding: 0; border: 4px solid var(--surface); box-shadow: 0 0 0 3px var(--accent); font-size: 0; }
 `;
   document.head.appendChild(css);
 
@@ -47,22 +52,28 @@
     : "Verre standard (environ 7,5 cm de large)";
 
   const MAX_SIDE = 1200; // la photo est réduite : plus rapide et suffisant pour la mesure
-  let bg = null, img = null, pts = null, found = null, drag = null, editing = false;
+  // Cadre du viseur, en fraction de l'image : le verre doit y tenir.
+  const FRAME = { l: 0.22, r: 0.78, t: 0.08, b: 0.92 };
+  let bg = null, img = null, pts = null, found = null, drag = null, editing = false, shot = null, stream = null;
 
   /* ---------- Fenêtre ---------- */
+  function stopCamera() {
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+  }
   function close() {
     if (!bg) return;
-    bg.remove(); bg = null; img = null; pts = null; found = null;
+    stopCamera();
+    bg.remove(); bg = null; img = null; pts = null; found = null; shot = null;
     document.removeEventListener("keydown", onKey);
     open.focus();
   }
   const onKey = (ev) => { if (ev.key === "Escape") close(); };
 
-  // Le sélecteur de photo s'ouvre dans le même geste que l'appui sur le bouton : l'appareil photo arrive tout de suite.
   const fileInput = () => {
     const inp = document.createElement("input");
     inp.type = "file"; inp.accept = "image/*"; inp.setAttribute("capture", "environment"); inp.hidden = true;
-    inp.addEventListener("change", () => { if (inp.files[0]) loadPhoto(inp.files[0]); });
+    inp.addEventListener("change", () => { if (inp.files[0]) { stopCamera(); loadPhoto(inp.files[0]); } });
     return inp;
   };
   const askPhoto = () => { const inp = fileInput(); bg.appendChild(inp); inp.click(); };
@@ -76,21 +87,79 @@
           <div><span class="k">Eau bue</span><div class="v" id="glassTitle" style="font-size:1.4rem">Mesurer un verre</div></div>
           <button type="button" class="close" aria-label="Fermer">✕</button>
         </div>
-        <div id="glassBody">
-          <button type="button" class="glass-pick ghost" id="glassPick">
-            <span>Photographiez le verre <b>de profil</b>, l'appareil à la hauteur de l'eau, devant un fond uni.</span>
-            <span class="pill">Prendre ou choisir une photo</span>
-          </button>
-        </div>
+        <div id="glassBody"></div>
         <p class="err" id="glassErr"></p>
       </div>`;
     document.body.appendChild(bg);
     bg.addEventListener("click", (ev) => { if (ev.target === bg) close(); });
     bg.querySelector(".close").addEventListener("click", close);
-    bg.querySelector("#glassPick").addEventListener("click", askPhoto);
     document.addEventListener("keydown", onKey);
-    askPhoto();
+    startCamera();
   });
+
+  // Sans viseur (appareil photo refusé ou indisponible) : on passe par le sélecteur de photo du téléphone.
+  function showPick(msg) {
+    if (!bg) return;
+    $("glassBody").innerHTML = `
+      <button type="button" class="glass-pick ghost" id="glassPick">
+        <span>Photographiez le verre <b>de profil</b>, <b>au centre</b> de la photo, l'appareil à la hauteur de l'eau.</span>
+        <span class="pill">Prendre ou choisir une photo</span>
+      </button>`;
+    $("glassPick").addEventListener("click", askPhoto);
+    $("glassErr").textContent = msg || "";
+  }
+
+  /* ---------- Viseur : l'appareil photo dans l'appli, avec un cadre pour placer le verre ---------- */
+  async function startCamera() {
+    if (!navigator.mediaDevices?.getUserMedia) { showPick(); return; }
+    $("glassErr").textContent = "";
+    $("glassBody").innerHTML = `<p class="glass-busy">Ouverture de l'appareil photo…</p>`;
+    try {
+      stopCamera();
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    } catch {
+      showPick("L'appareil photo n'a pas pu s'ouvrir dans l'appli : prenez la photo avec le bouton ci-dessous.");
+      return;
+    }
+    if (!bg) { stopCamera(); return; }
+    $("glassBody").innerHTML = `
+      <div style="display:grid;gap:12px">
+        <div class="glass-cam" id="glassCam">
+          <video id="glassVideo" playsinline muted autoplay></video>
+          <div class="glass-frame"></div>
+        </div>
+        <p class="note" style="margin:0;text-align:center">Placez le verre <b>dans le cadre</b>, de profil, le téléphone à la hauteur de l'eau.</p>
+        <div class="glass-shoot"><button type="button" id="glassShoot" aria-label="Prendre la photo">Prendre la photo</button></div>
+        <button type="button" class="ghost" id="glassFromFile">Choisir une photo existante</button>
+      </div>`;
+    const video = $("glassVideo");
+    video.srcObject = stream;
+    video.addEventListener("loadedmetadata", () => {
+      // Le cadre suit l'image : la zone d'affichage garde les proportions de la caméra.
+      const ar = video.videoWidth / video.videoHeight;
+      const cam = $("glassCam");
+      cam.style.aspectRatio = String(ar);
+      cam.style.width = `min(100%, calc(55vh * ${ar}))`;
+    });
+    video.play().catch(() => {});
+    $("glassFromFile").addEventListener("click", askPhoto);
+    $("glassShoot").addEventListener("click", () => {
+      if (!video.videoWidth) return;
+      // On garde le cadre et un peu de décor autour : la détection compare l'intérieur du verre à ce qui l'entoure.
+      const fw = FRAME.r - FRAME.l;
+      const x0 = Math.max(0, FRAME.l - fw * 0.35), x1 = Math.min(1, FRAME.r + fw * 0.35);
+      const y0 = Math.max(0, FRAME.t - 0.04), y1 = Math.min(1, FRAME.b + 0.04);
+      const sw = (x1 - x0) * video.videoWidth, sh = (y1 - y0) * video.videoHeight;
+      const k = Math.min(1, MAX_SIDE / Math.max(sw, sh));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(sw * k); cv.height = Math.round(sh * k);
+      cv.getContext("2d").drawImage(video, x0 * video.videoWidth, y0 * video.videoHeight, sw, sh, 0, 0, cv.width, cv.height);
+      stopCamera();
+      // Zone de recherche : le cadre du viseur, ramené à la photo recadrée, avec une petite marge.
+      const l = (FRAME.l - x0) / (x1 - x0), r = (FRAME.r - x0) / (x1 - x0);
+      analyze(cv, { x: 0.5, y: 0.5, l: l - 0.05, r: r + 0.05 });
+    });
+  }
 
   function loadPhoto(file) {
     $("glassErr").textContent = "";
@@ -103,27 +172,32 @@
       cv.width = Math.round(im.naturalWidth * k); cv.height = Math.round(im.naturalHeight * k);
       cv.getContext("2d").drawImage(im, 0, 0, cv.width, cv.height);
       URL.revokeObjectURL(url);
-      img = { w: cv.width, h: cv.height, src: cv.toDataURL("image/jpeg", 0.85) };
-      found = detect(cv);
-      pts = found.pts;
-      editing = false;
-      showResult();
+      analyze(cv, { x: 0.5, y: 0.5 });
     };
     im.onerror = () => {
       URL.revokeObjectURL(url);
-      $("glassBody").innerHTML = `<button type="button" class="glass-pick ghost" id="glassPick"><span class="pill">Choisir une autre photo</span></button>`;
-      $("glassPick").addEventListener("click", askPhoto);
-      $("glassErr").textContent = "Impossible de lire cette image. Essayez une photo JPEG ou PNG.";
+      showPick("Impossible de lire cette image. Essayez une photo JPEG ou PNG.");
     };
     im.src = url;
   }
 
+  function analyze(cv, focus) {
+    if (!bg) return;
+    shot = cv;
+    img = { w: cv.width, h: cv.height, src: cv.toDataURL("image/jpeg", 0.85) };
+    found = detect(cv, focus);
+    pts = found.pts;
+    editing = false;
+    showResult();
+  }
+
   /* ---------- Détection automatique ---------- */
-  // 1. Les deux bords du verre : les colonnes aux contrastes verticaux les plus forts.
+  // 1. Les deux bords du verre : deux colonnes aux contrastes verticaux forts, de part et d'autre du point visé
+  //    (le centre du cadre, ou l'endroit touché sur la photo).
   // 2. Chaque bord est suivi ligne par ligne puis ajusté par une droite (verre évasé ou droit).
   // 3. Le niveau de l'eau : là où la couleur à l'intérieur du verre change le plus nettement,
   //    renforcé par la ligne horizontale de la surface.
-  function detect(src) {
+  function detect(src, focus = { x: 0.5, y: 0.5 }) {
     const w = 240, h = Math.max(24, Math.round((src.height / src.width) * w));
     const cv = document.createElement("canvas");
     cv.width = w; cv.height = h;
@@ -150,11 +224,16 @@
     const peaks = [];
     for (let x = 2; x < w - 2; x++) if (cs[x] >= cs[x - 1] && cs[x] >= cs[x + 1]) peaks.push(x);
     peaks.sort((p, q) => cs[q] - cs[p]);
-    let xl = Math.round(w * 0.3), xr = Math.round(w * 0.7), bestPair = -1;
-    const top = peaks.slice(0, 10);
+    // Le verre entoure le point visé et tient dans la zone où on le cherche (le cadre du viseur, ou autour
+    // de l'endroit touché) : une porte, un meuble ou une bouteille sur le côté ne doit pas l'emporter.
+    // Les deux côtés d'un même verre ont à peu près le même contraste.
+    const fx = focus.x * w, zl = (focus.l ?? 0) * w, zr = (focus.r ?? 1) * w;
+    let xl = Math.round(Math.max(1, fx - w * 0.15)), xr = Math.round(Math.min(w - 2, fx + w * 0.15)), bestPair = -1;
+    const top = peaks.filter((x) => x >= zl && x <= zr).slice(0, 16);
     for (const p of top) for (const q of top) {
-      if (q - p < w * 0.12) continue;
-      const s = Math.min(cs[p], cs[q]);
+      if (q - p < w * 0.08 || !(p < fx && fx < q)) continue;
+      const lo2 = Math.min(cs[p], cs[q]), hi2 = Math.max(cs[p], cs[q]);
+      const s = lo2 * Math.sqrt(lo2 / hi2) * (1 - 0.9 * Math.min(1, Math.abs((p + q) / 2 - fx) / ((zr - zl) * 0.5)));
       if (s > bestPair) { bestPair = s; xl = p; xr = q; }
     }
 
@@ -331,6 +410,7 @@
             ${["tl", "tr", "bl", "br", "water"].map((k) => `<g class="h" data-h="${k}"><circle r="${r * 2.4}" fill="transparent"/><circle r="${r}" fill="${k === "water" ? "#3b82f6" : "#0d6b62"}" stroke="#ffffff" stroke-width="${r * 0.3}"/></g>`).join("")}
           </svg>
         </div>
+        <p class="note" id="glassTapHint" style="margin:0">Le repère n'est pas sur le verre ? <b>Touchez le verre sur la photo</b> pour relancer la mesure à cet endroit.</p>
         <p class="note" id="glassHint" style="margin:0" hidden>Faites glisser les points <b>sur les bords intérieurs</b> du verre (haut et fond), puis la ligne bleue <b>sur la surface de l'eau</b>.</p>
         <div class="glass-refline" id="glassRefLine"><span id="glassRefTxt"></span><button type="button" class="ghost" id="glassRefEdit">Changer de verre</button></div>
         <div class="glass-ref" id="glassRef" hidden>
@@ -411,15 +491,25 @@
     const stop = () => { drag = null; };
     svg.addEventListener("pointerup", stop);
     svg.addEventListener("pointercancel", stop);
+    // Toucher la photo vise le verre à cet endroit et relance la mesure.
+    svg.addEventListener("click", (ev) => {
+      if (editing) return;
+      const p = toSvg(ev);
+      const fx = p.x / img.w;
+      found = detect(shot, { x: fx, y: p.y / img.h, l: fx - 0.35, r: fx + 0.35 });
+      pts = found.pts;
+      draw();
+    });
 
     $("glassFix").addEventListener("click", () => {
       editing = !editing;
       $("glassStage").classList.toggle("locked", !editing);
       $("glassHint").hidden = !editing;
+      $("glassTapHint").hidden = editing;
       $("glassFix").textContent = editing ? "Terminer la correction" : "Corriger les repères";
       draw();
     });
-    $("glassAgain").addEventListener("click", askPhoto);
+    $("glassAgain").addEventListener("click", startCamera);
     $("glassAdd").addEventListener("click", () => {
       const m = measure();
       if (!m) { $("glassErr").textContent = "Indiquez la contenance du verre ou son diamètre."; showRef(true); return; }
