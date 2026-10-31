@@ -229,6 +229,34 @@
         </ul></section>`,
       };
     },
+    // 8. Tour de taille
+    (c, p) => {
+      const male = p.sex === "h", v = waistVerdict(c, p);
+      const how = `<section><h3>Bien mesurer</h3><ul>
+          <li>Debout, à jeun, le ventre détendu, après avoir expiré normalement.</li>
+          <li>Mètre ruban à l'horizontale, à mi-chemin entre la dernière côte et le haut de la hanche.</li>
+          <li>Ajusté sur la peau, sans serrer.</li>
+        </ul></section>`;
+      if (!v) return { k: "Tour de taille", v: "—", u: "", body: `<section><p>Indiquez votre tour de taille dans la case prévue pour vérifier ce que dit votre IMC.</p></section>${how}` };
+      const rows = [[`Moins de ${v.watch} cm`, "Risque faible"], [`${v.watch} à ${v.high - 1} cm`, "Risque accru"], [`${v.high} cm et plus`, "Risque élevé (obésité abdominale)"]];
+      return {
+        k: "Tour de taille", v: fmt(c.waist, c.waist % 1 ? 1 : 0), u: "cm",
+        body: `
+        <section><h3>Le verdict : ${v.label}</h3><p>${v.text}</p></section>
+        <section><h3>Les calculs</h3>
+          <div class="formula">Rapport = tour de taille ÷ taille<br>= ${r1(c.waist)} ÷ ${p.height} = <b>${fmt(c.wht, 2)}</b> (repère : moins de 0,50)<br><br>Masse grasse relative = 64 − 20 × (taille ÷ tour de taille)${male ? "" : " + 12"}<br>= 64 − 20 × ${fmt(p.height / c.waist, 2)}${male ? "" : " + 12"} = <b>${r1(Math.max(3, c.rfm))} %</b></div>
+        </section>
+        <section><h3>Seuils de l'OMS (${male ? "hommes" : "femmes"})</h3>${table(["Tour de taille", "Risque"], rows, v.waistHigh ? 2 : v.waistWatch ? 1 : 0, [])}</section>
+        <section><h3>Comment on tranche</h3><ul>
+          <li>IMC de 30 ou plus, avec tour de taille élevé ou rapport de 0,50 ou plus : obésité confirmée.</li>
+          <li>IMC de 30 ou plus sans ces signes : obésité non confirmée, le poids peut venir du muscle.</li>
+          <li>IMC sous 30, mais tour de taille élevé et rapport de 0,50 ou plus : obésité abdominale.</li>
+          <li>IMC de 40 ou plus : l'excès de graisse est considéré comme certain.</li>
+        </ul>
+        <p class="note">Critères inspirés de la commission du Lancet sur l'obésité (2025). Seuils prévus pour les adultes, hors grossesse. Certaines origines ont des seuils plus bas.</p></section>
+        ${how}`,
+      };
+    },
   ];
 
   /* ---------- Fenêtre ---------- */
